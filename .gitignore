@@ -1,0 +1,10 @@
+# Local host-package links used to typecheck and run tests.
+node_modules/
+
+# Plan notes and other working files.
+scratch/
+
+# Build and editor noise.
+dist/
+*.tsbuildinfo
+.DS_Store

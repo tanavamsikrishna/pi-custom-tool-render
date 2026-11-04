@@ -1,0 +1,38 @@
+{
+  "name": "pi-custom-tool-render",
+  "version": "0.1.0",
+  "description": "Individual tool rendering for Pi, including custom and MCP tools this package did not register.",
+  "type": "module",
+  "main": "./extensions/index.ts",
+  "exports": {
+    ".": "./extensions/index.ts"
+  },
+  "files": [
+    "extensions",
+    "src",
+    "config/config.example.json",
+    "config/config.schema.json",
+    "README.md",
+    "LICENSE",
+    "UPSTREAM_LICENSE"
+  ],
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-coding-agent",
+    "tool-rendering"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "intent": {
+    "language": "zh-CN",
+    "maxLength": 96
+  },
+  "toolCalls": {
+    "bashCommandPreviewRows": 1
+  },
+  "results": {
+    "mode": "summary",
+    "previewRows": 10
+  },
+  "diff": {
+    "layout": "auto",
+    "indicators": "bars",
+    "splitMinWidth": 120,
+    "collapsedRows": 24,
+    "collapsedMode": "body",
+    "wordWrap": true
+  },
+  "tools": {
+    "passthrough": []
+  },
+  "advanced": {
+    "expandedRows": 500,
+    "truncationHints": false,
+    "rtkCompactionHints": false,
+    "debug": false
+  }
+}
