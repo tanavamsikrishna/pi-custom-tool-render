@@ -25,13 +25,17 @@ function rendered(
   return component?.render(120).join("\n") ?? "";
 }
 
-function callLine(toolName: string, args: unknown): string {
+function callLine(
+  toolName: string,
+  args: unknown,
+  context?: { cwd?: string },
+): string {
   const resolved = resolveToolRenderers(toolName, () => config());
   return rendered(
     resolved.renderCall?.(
       args,
       theme as never,
-      { executionStarted: false } as never,
+      { executionStarted: false, ...context } as never,
     ) as { render(width: number): string[] },
   );
 }
@@ -72,6 +76,21 @@ test("the call line is the tool name plus an argument preview", () => {
   const text = callLine("memory_search", { query: "docs" });
   assert.match(text, /^ .*memory_search \(query=docs\)/);
   assert.equal(text.includes("—"), false);
+});
+
+test("built-in call lines use the tool preview", () => {
+  const cwd = "/proj";
+  assert.match(
+    callLine("read", { path: "/proj/src/a.ts", offset: 2 }, { cwd }),
+    /read \(a\.ts src\/\)/,
+  );
+  assert.match(callLine("bash", { command: "ls -la", timeout: 5 }, { cwd }), /bash \(ls -la\)/);
+  assert.equal(
+    callLine("edit", { path: "/proj/src/a.ts", edits: [{ oldText: "secret", newText: "x" }] }, { cwd }).includes(
+      "secret",
+    ),
+    false,
+  );
 });
 
 test("non-diff tools hide the result body", () => {

@@ -159,10 +159,6 @@ function normalizeCodeWhitespace(text: string): string {
   return text.replace(/\t/g, "    ");
 }
 
-function emphasis(theme: DiffTheme, text: string): string {
-  return typeof theme.bold === "function" ? theme.bold(text) : text;
-}
-
 function sequenceResetsBackground(params: number[]): boolean {
   let index = 0;
   while (index < params.length) {
@@ -2321,8 +2317,7 @@ function buildDiffSummaryBasePieces(
   theme: DiffTheme,
 ): string[] {
   return [
-    theme.fg("toolOutput", `↳ ${emphasis(theme, "diff")}`),
-    theme.fg("toolDiffAdded", `+${stats.added}`),
+    `${theme.fg("toolOutput", "↳ ")}${theme.fg("toolDiffAdded", `+${stats.added}`)}`,
     theme.fg("toolDiffRemoved", `-${stats.removed}`),
   ];
 }

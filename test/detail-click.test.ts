@@ -195,12 +195,12 @@ test("resolveToolRenderers draws read and generic rows without the host renderer
     read.renderCall?.(
       { path: "a.ts" },
       theme as never,
-      { executionStarted: false } as never,
+      { executionStarted: false, cwd: "/proj" } as never,
     ) as Component
   )
     .render(120)
     .join("\n");
-  assert.match(readText, /^ .*read \(path=a.ts\)/);
+  assert.match(readText, /^ .*read \(a\.ts \.\/\)/);
 
   const generic = resolveToolRenderers("memory_search", () => config());
   const text = (

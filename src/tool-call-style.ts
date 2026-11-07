@@ -32,13 +32,12 @@ export function formatStatusMarker(
 export function formatToolCall(
   toolName: string,
   target: string,
-  metadataSuffix: string,
   theme: ToolCallStyleTheme,
   context?: ToolCallStatusContext,
 ): string {
   const marker = formatStatusMarker(theme, context);
   const label = toolName;
-  return `${marker} ${theme.fg("toolTitle", theme.bold(label))} (${target})${metadataSuffix}`;
+  return `${marker} ${theme.fg("toolTitle", theme.bold(label))} (${target})`;
 }
 
 function isComponent(value: unknown): value is Component {

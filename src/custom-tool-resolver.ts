@@ -8,7 +8,7 @@ import type {
   ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
 import { Text, type Component } from "@earendil-works/pi-tui";
-import { formatFlatArgumentPreview } from "./arg-preview.js";
+import { formatToolArgumentPreview } from "./tool-argument-preview.js";
 import { wrapDetailRenderers } from "./detail-click.js";
 import {
   renderEditDiffResult,
@@ -51,6 +51,14 @@ function isToolError(result: unknown, context?: RenderContext): boolean {
 
 function hiddenResult(): Text {
   return new Text("", 0, 0);
+}
+
+function cwdFrom(context: unknown): string | undefined {
+  if (!context || typeof context !== "object" || !("cwd" in context)) {
+    return undefined;
+  }
+  const cwd = (context as { cwd?: unknown }).cwd;
+  return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
 }
 
 function errorResult(
@@ -119,8 +127,10 @@ export function resolveToolRenderers(
     renderCall(args, theme, context) {
       const line = formatToolCall(
         toolName,
-        theme.fg("muted", formatFlatArgumentPreview(args)),
-        "",
+        theme.fg(
+          "muted",
+          formatToolArgumentPreview(toolName, args, { cwd: cwdFrom(context) }),
+        ),
         theme,
         context,
       );
