@@ -14,10 +14,6 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "language": {
-          "enum": ["auto", "zh-CN", "en"],
-          "default": "auto"
-        },
         "maxLength": {
           "type": "integer",
           "minimum": 16,

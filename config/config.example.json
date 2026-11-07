@@ -1,7 +1,6 @@
 {
   "version": 2,
   "intent": {
-    "language": "auto",
     "maxLength": 96
   },
   "diff": {

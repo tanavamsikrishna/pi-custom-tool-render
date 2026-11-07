@@ -10,13 +10,11 @@ import {
 	DIFF_INDICATOR_MODES,
 	DIFF_VIEW_MODES,
 	TOOL_DISPLAY_CONFIG_VERSION,
-	TOOL_INTENT_LANGUAGES,
 	type ConfigLoadResult,
 	type DiffCollapsedMode,
 	type DiffIndicatorMode,
 	type DiffViewMode,
 	type ToolDisplayConfig,
-	type ToolIntentLanguage,
 } from "./types.js";
 
 const PI_CUSTOM_TOOL_RENDER_SETTINGS_KEY = "pi-custom-tool-render";
@@ -84,11 +82,6 @@ function readIntent(source: Record<string, unknown>): ToolDisplayConfig["toolInt
 				? source.displaySummary
 				: {};
 	return {
-		language: enumValue(
-			nested.language,
-			TOOL_INTENT_LANGUAGES,
-			DEFAULT_TOOL_DISPLAY_CONFIG.toolIntent.language,
-		) as ToolIntentLanguage,
 		maxLength: clampNumber(
 			nested.maxLength,
 			16,
