@@ -54,13 +54,6 @@ test("the call line is the tool name plus an argument preview", () => {
 	assert.equal(text.includes("—"), false);
 });
 
-test("an existing displaySummary is suffixed and is not invented", () => {
-	const withSummary = callLine("web_search", { query: "docs", displaySummary: "Checking docs" });
-	const withoutSummary = callLine("web_search", { query: "docs" });
-	assert.match(withSummary, /Checking docs/);
-	assert.equal(withoutSummary.includes("—"), false);
-});
-
 test("non-diff tools hide the result body", () => {
 	for (const toolName of ["read", "bash", "memory_search", "mcp"]) {
 		const text = resultLine(toolName, {

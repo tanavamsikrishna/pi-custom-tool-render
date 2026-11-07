@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "intent": {
-    "maxLength": 96
-  },
   "diff": {
     "layout": "auto",
     "indicators": "bars",

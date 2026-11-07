@@ -8,13 +8,13 @@ This package draws every tool row. It does not change execution, parameter schem
 
 A plain left click on a call or result component opens the detail overlay. `Ctrl+O` still expands or collapses the inline row.
 
-Settings are the `pi-custom-tool-render` key from `pi.getSettings()`. Only `intent` and `diff` are read. `results.mode`, `tools.custom`, and built-in ownership keys are ignored.
+Settings are the `pi-custom-tool-render` key from `pi.getSettings()`. Only `diff` is read. `intent`, `results.mode`, `tools.custom`, and built-in ownership keys are ignored.
 
 ## Groups
 
 ```text
 resolve(toolName):
-  renderCall = name (argument preview) [+ displaySummary if already present]
+  renderCall = name (argument preview)
   renderResult = edit or write ? diff : empty
 ```
 

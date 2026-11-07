@@ -30,14 +30,13 @@ export function formatClaudeToolCall(
 	toolName: string,
 	target: string,
 	metadataSuffix: string,
-	intentSuffix: string,
 	theme: ToolCallStyleTheme,
 	context?: ToolCallStatusContext,
 	runningFrame?: string,
 ): string {
 	const marker = formatClaudeStatusMarker(theme, context, runningFrame);
 	const label = toolName;
-	return `${marker} ${theme.fg("toolTitle", theme.bold(label))} (${target})${metadataSuffix}${intentSuffix}`;
+	return `${marker} ${theme.fg("toolTitle", theme.bold(label))} (${target})${metadataSuffix}`;
 }
 
 function isComponent(value: unknown): value is Component {

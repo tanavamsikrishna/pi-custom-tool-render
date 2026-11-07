@@ -1,6 +1,6 @@
 /**
  * Loads the pi-custom-tool-render settings object from pi.getSettings().
- * Reads intent and diff only. Other keys are ignored so older settings still load.
+ * Reads diff only. Other keys are ignored so older settings still load.
  * Does not read or write a config file.
  */
 import { toRecord } from "./tool-metadata.js";
@@ -73,24 +73,6 @@ function readDiff(source: Record<string, unknown>): Pick<
 	};
 }
 
-function readIntent(source: Record<string, unknown>): ToolDisplayConfig["toolIntent"] {
-	const nested = isRecord(source.intent)
-		? source.intent
-		: isRecord(source.toolIntent)
-			? source.toolIntent
-			: isRecord(source.displaySummary)
-				? source.displaySummary
-				: {};
-	return {
-		maxLength: clampNumber(
-			nested.maxLength,
-			16,
-			256,
-			DEFAULT_TOOL_DISPLAY_CONFIG.toolIntent.maxLength,
-		),
-	};
-}
-
 export function loadToolDisplayConfigFromSettings(settings: unknown): ConfigLoadResult {
 	if (!isRecord(settings)) {
 		return { config: { ...DEFAULT_TOOL_DISPLAY_CONFIG }, error: "settings: expected object" };
@@ -112,7 +94,7 @@ export function loadToolDisplayConfigFromSettings(settings: unknown): ConfigLoad
 	const source = toRecord(section);
 	return {
 		config: {
-			toolIntent: readIntent(source),
+			...DEFAULT_TOOL_DISPLAY_CONFIG,
 			...readDiff(source),
 		},
 	};

@@ -10,18 +10,6 @@
     "version": {
       "const": 2
     },
-    "intent": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "maxLength": {
-          "type": "integer",
-          "minimum": 16,
-          "maximum": 256,
-          "default": 96
-        }
-      }
-    },
     "diff": {
       "type": "object",
       "additionalProperties": false,

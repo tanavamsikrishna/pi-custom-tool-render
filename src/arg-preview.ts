@@ -1,5 +1,3 @@
-import { normalizeDisplaySummary, stripDisplaySummary } from "./display-summary.js";
-
 export const CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH = 120;
 const ARGUMENT_VALUE_MAX_LENGTH = 48;
 const ARGUMENT_KEY_MAX_LENGTH = 32;
@@ -19,8 +17,19 @@ function truncateCharacters(value: string, maxLength: number): string {
 	return `${characters.slice(0, maxLength - 1).join("")}…`;
 }
 
+function plainText(value: string, maxLength: number): string {
+	const normalized = value
+		.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+		.replace(/\x1b\[[0-?]*[ -\/]*[@-~]/g, "")
+		.replace(/\x1b[@-_]/g, "")
+		.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+	return truncateCharacters(normalized, maxLength);
+}
+
 function safeKey(value: string): string {
-	return truncateCharacters(normalizeDisplaySummary(value, ARGUMENT_KEY_MAX_LENGTH) ?? "arg", ARGUMENT_KEY_MAX_LENGTH);
+	return plainText(value, ARGUMENT_KEY_MAX_LENGTH) || "arg";
 }
 
 function sanitizeStructuredString(key: string, value: string): string {
@@ -38,7 +47,7 @@ function sanitizeStructuredString(key: string, value: string): string {
 function stringPreview(key: string, value: string): string {
 	const firstLine = value.split(/\r\n?|\n/, 1)[0] ?? "";
 	const hasMoreLines = /\r|\n/.test(value);
-	const normalized = normalizeDisplaySummary(sanitizeStructuredString(key, firstLine), 256) ?? "";
+	const normalized = plainText(sanitizeStructuredString(key, firstLine), 256);
 	if (SENSITIVE_VALUE_PATTERN.test(normalized)) return "•••";
 	const clipped = truncateCharacters(normalized, ARGUMENT_VALUE_MAX_LENGTH - (hasMoreLines ? 1 : 0));
 	const text = `${clipped}${hasMoreLines && !clipped.endsWith("…") ? "…" : ""}`;
@@ -62,8 +71,7 @@ export function formatFlatArgumentPreview(
 	args: unknown,
 	maxLength = CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH,
 ): string {
-	const stripped = stripDisplaySummary(args);
-	const record = isRecord(stripped) ? stripped : {};
+	const record = isRecord(args) ? args : {};
 	const entries = Object.entries(record);
 	if (entries.length === 0) return "no args";
 	const preview = entries.map(([key, value]) => formatEntry(key, value)).join(" · ");

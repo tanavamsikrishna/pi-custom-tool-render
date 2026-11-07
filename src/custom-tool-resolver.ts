@@ -7,7 +7,6 @@ import { Text, type Component } from "@earendil-works/pi-tui";
 import { formatFlatArgumentPreview } from "./arg-preview.js";
 import { wrapDetailRenderers } from "./detail-click.js";
 import { renderEditDiffResult, renderWriteDiffResult } from "./diff-renderer.js";
-import { getDisplaySummary } from "./display-summary.js";
 import { extractTextOutput } from "./render-utils.js";
 import { applyToolResultStyle, formatClaudeToolCall } from "./tool-call-style.js";
 import { toRecord } from "./tool-metadata.js";
@@ -95,16 +94,10 @@ export function resolveToolRenderers(
 	return wrapDetailRenderers(toolName, {
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			const config = getConfig();
-			const summary = getDisplaySummary(args, config.toolIntent.maxLength);
-			const intentSuffix = summary
-				? `${theme.fg("muted", " — ")}${theme.fg("accent", summary)}`
-				: "";
 			const line = formatClaudeToolCall(
 				toolName,
 				theme.fg("muted", formatFlatArgumentPreview(args)),
 				"",
-				intentSuffix,
 				theme,
 				context,
 			);

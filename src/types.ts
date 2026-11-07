@@ -1,6 +1,6 @@
 /**
  * Runtime config for tool-row drawing.
- * Only diff layout and the call-line intent suffix are configurable.
+ * Only diff layout is configurable.
  * Result visibility is not a setting: edit and write are diffs, everything else is hidden.
  */
 export const DIFF_VIEW_MODES = ["auto", "split", "unified"] as const;
@@ -12,13 +12,8 @@ export type DiffViewMode = (typeof DIFF_VIEW_MODES)[number];
 export type DiffIndicatorMode = (typeof DIFF_INDICATOR_MODES)[number];
 export type DiffCollapsedMode = (typeof DIFF_COLLAPSED_MODES)[number];
 
-export interface ToolIntentConfig {
-	maxLength: number;
-}
-
 /** Effective runtime configuration. Output groups are fixed, not stored here. */
 export interface ToolDisplayConfig {
-	toolIntent: ToolIntentConfig;
 	/** Expanded diff row cap. Zero means no cap. Not a settings key; the popup sets 0. */
 	expandedPreviewMaxRows: number;
 	diffViewMode: DiffViewMode;
@@ -30,9 +25,6 @@ export interface ToolDisplayConfig {
 }
 
 export const DEFAULT_TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
-	toolIntent: {
-		maxLength: 96,
-	},
 	expandedPreviewMaxRows: 4000,
 	diffViewMode: "auto",
 	diffIndicatorMode: "bars",

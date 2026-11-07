@@ -21,8 +21,6 @@ Every name uses the same call line: `name (args)`. `edit` and `write` then show 
 }
 ```
 
-`displaySummary` is appended only when the arguments already contain it. This package does not add that field to another extension's schema.
-
 ## License
 
 MIT. See `LICENSE` and `UPSTREAM_LICENSE`.
