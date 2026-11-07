@@ -64,7 +64,10 @@ const USER_MESSAGE_PATCH_VERSION = 16;
 const MAX_USER_MESSAGE_MARKDOWN_TEXT_LENGTH = 100_000;
 const MAX_USER_MESSAGE_MARKDOWN_LINE_COUNT = 2_000;
 
-function colorBorder(theme: UserMessageTheme | undefined, text: string): string {
+function colorBorder(
+  theme: UserMessageTheme | undefined,
+  text: string,
+): string {
   if (!text || !theme) {
     return text;
   }
@@ -76,7 +79,10 @@ function colorBorder(theme: UserMessageTheme | undefined, text: string): string 
   }
 }
 
-function colorTitle(theme: UserMessageTheme | undefined, title: string): string {
+function colorTitle(
+  theme: UserMessageTheme | undefined,
+  title: string,
+): string {
   if (!title) {
     return title;
   }
@@ -127,10 +133,7 @@ function buildBottomBorder(
 }
 
 function getUserMessageContentWidth(totalWidth: number): number {
-  return Math.max(
-    1,
-    totalWidth - 2 - CONTENT_HORIZONTAL_PADDING_COLUMNS * 2,
-  );
+  return Math.max(1, totalWidth - 2 - CONTENT_HORIZONTAL_PADDING_COLUMNS * 2);
 }
 
 function wrapContentLine(
@@ -148,9 +151,9 @@ function wrapContentLine(
   return colorUserBackground(theme, row);
 }
 
-function createMarkdownRenderer(
-  markdownState: UserMessageMarkdownState,
-): { render(width: number): string[] } {
+function createMarkdownRenderer(markdownState: UserMessageMarkdownState): {
+  render(width: number): string[];
+} {
   return new Markdown(
     markdownState.text,
     0,
@@ -203,12 +206,17 @@ function hasSameDefaultTextStyle(
 }
 
 function hasSameMarkdownState(
-  cached: Pick<CachedUserMessageMarkdownRenderer, "text" | "theme" | "defaultTextStyle">,
+  cached: Pick<
+    CachedUserMessageMarkdownRenderer,
+    "text" | "theme" | "defaultTextStyle"
+  >,
   state: UserMessageMarkdownState,
 ): boolean {
-  return cached.text === state.text
-    && cached.theme === state.theme
-    && hasSameDefaultTextStyle(cached.defaultTextStyle, state.defaultTextStyle);
+  return (
+    cached.text === state.text &&
+    cached.theme === state.theme &&
+    hasSameDefaultTextStyle(cached.defaultTextStyle, state.defaultTextStyle)
+  );
 }
 
 function hasSameFinalOutputState(
@@ -225,15 +233,17 @@ function hasSameFinalOutputState(
     return !cached.hasMarkdownState;
   }
 
-  return cached.hasMarkdownState
-    && hasSameMarkdownState(
+  return (
+    cached.hasMarkdownState &&
+    hasSameMarkdownState(
       {
         text: cached.text ?? "",
         theme: cached.markdownTheme,
         defaultTextStyle: cached.defaultTextStyle,
       },
       markdownState,
-    );
+    )
+  );
 }
 
 function toFinalOutputCacheEntry(
@@ -269,16 +279,18 @@ export function shouldBypassUserMessageMarkdownRebuild(
     return true;
   }
 
-  return countUserMessageLines(
-    markdownState.text,
-    MAX_USER_MESSAGE_MARKDOWN_LINE_COUNT,
-  ) > MAX_USER_MESSAGE_MARKDOWN_LINE_COUNT;
+  return (
+    countUserMessageLines(
+      markdownState.text,
+      MAX_USER_MESSAGE_MARKDOWN_LINE_COUNT,
+    ) > MAX_USER_MESSAGE_MARKDOWN_LINE_COUNT
+  );
 }
 
 export function createUserMessageMarkdownLineRenderer(
-  buildRenderer: (
-    markdownState: UserMessageMarkdownState,
-  ) => { render(width: number): string[] } = createMarkdownRenderer,
+  buildRenderer: (markdownState: UserMessageMarkdownState) => {
+    render(width: number): string[];
+  } = createMarkdownRenderer,
 ): (
   instance: object,
   markdownState: UserMessageMarkdownState,
@@ -296,9 +308,10 @@ export function createUserMessageMarkdownLineRenderer(
       return cached.renderedLines;
     }
 
-    const renderer = canReuseRenderer && cached
-      ? cached.renderer
-      : buildRenderer(markdownState);
+    const renderer =
+      canReuseRenderer && cached
+        ? cached.renderer
+        : buildRenderer(markdownState);
     const renderedLines = renderer.render(width);
 
     cache.set(instance, {
@@ -354,10 +367,15 @@ function renderUserMessageBodyLines(
   }
 }
 
-function installUserMessageSetExpanded(prototype: PatchableUserMessagePrototype): void {
+function installUserMessageSetExpanded(
+  prototype: PatchableUserMessagePrototype,
+): void {
   if (prototype.__piUserMessageSetExpandedPatched) return;
   prototype.__piUserMessageOriginalSetExpanded = prototype.setExpanded;
-  prototype.setExpanded = function setAggregateUserMessageExpanded(this: PatchableUserMessagePrototype, expanded: boolean): void {
+  prototype.setExpanded = function setAggregateUserMessageExpanded(
+    this: PatchableUserMessagePrototype,
+    expanded: boolean,
+  ): void {
     prototype.__piUserMessageOriginalSetExpanded?.call(this, expanded);
     try {
       this.invalidate?.();
@@ -374,7 +392,10 @@ export function patchNativeUserMessagePrototype(
   isEnabled: () => boolean,
 ): void {
   const finalOutputCache = new WeakMap<object, CachedUserMessageFinalOutput>();
-  const originalBodyLineCache = new WeakMap<object, CachedUserMessageBodyLines>();
+  const originalBodyLineCache = new WeakMap<
+    object,
+    CachedUserMessageBodyLines
+  >();
   installUserMessageSetExpanded(prototype);
 
   patchUserMessageRenderPrototype(
@@ -383,19 +404,27 @@ export function patchNativeUserMessagePrototype(
     (originalRender) =>
       function renderWithNativeUserBorder(width: number): string[] {
         const safeWidth = Math.max(0, Math.floor(width));
-        if (!isEnabled()) return originalRender.call(this, safeWidth) as string[];
+        if (!isEnabled())
+          return originalRender.call(this, safeWidth) as string[];
         const canCacheFinalOutput = typeof this === "object" && this !== null;
-        if (safeWidth < MIN_BORDER_WIDTH) return originalRender.call(this, safeWidth) as string[];
+        if (safeWidth < MIN_BORDER_WIDTH)
+          return originalRender.call(this, safeWidth) as string[];
         const markdownState = canCacheFinalOutput
           ? extractUserMessageMarkdownState(this as { children?: unknown[] })
           : undefined;
         const theme = getTheme();
-        if (markdownState && shouldBypassUserMessageMarkdownRebuild(markdownState)) {
+        if (
+          markdownState &&
+          shouldBypassUserMessageMarkdownRebuild(markdownState)
+        ) {
           return originalRender.call(this, safeWidth) as string[];
         }
         if (canCacheFinalOutput) {
           const cached = finalOutputCache.get(this as object);
-          if (cached && hasSameFinalOutputState(cached, safeWidth, theme, markdownState)) {
+          if (
+            cached &&
+            hasSameFinalOutputState(cached, safeWidth, theme, markdownState)
+          ) {
             return cached.output;
           }
         }

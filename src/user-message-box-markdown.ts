@@ -16,7 +16,9 @@ export interface UserMessageMarkdownState {
   defaultTextStyle?: Record<string, unknown>;
 }
 
-function sanitizeDefaultTextStyle(value: unknown): Record<string, unknown> | undefined {
+function sanitizeDefaultTextStyle(
+  value: unknown,
+): Record<string, unknown> | undefined {
   if (!isRecord(value)) {
     return undefined;
   }
@@ -26,7 +28,11 @@ function sanitizeDefaultTextStyle(value: unknown): Record<string, unknown> | und
 }
 
 function isMarkdownLike(value: unknown): value is MarkdownLike {
-  return isRecord(value) && typeof value.text === "string" && value.theme !== undefined;
+  return (
+    isRecord(value) &&
+    typeof value.text === "string" &&
+    value.theme !== undefined
+  );
 }
 
 function findMarkdownChild(value: unknown): MarkdownLike | undefined {

@@ -24,7 +24,10 @@ export function isFiniteSgrParam(value: number | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-export function readSgrColorSequence(params: number[], index: number): number[] | undefined {
+export function readSgrColorSequence(
+  params: number[],
+  index: number,
+): number[] | undefined {
   const param = params[index];
   if (param !== 38 && param !== 48) {
     return undefined;
@@ -33,14 +36,18 @@ export function readSgrColorSequence(params: number[], index: number): number[] 
   const colorMode = params[index + 1];
   if (colorMode === 5) {
     const colorValue = params[index + 2];
-    return isFiniteSgrParam(colorValue) ? [param, colorMode, colorValue] : undefined;
+    return isFiniteSgrParam(colorValue)
+      ? [param, colorMode, colorValue]
+      : undefined;
   }
 
   if (colorMode === 2) {
     const red = params[index + 2];
     const green = params[index + 3];
     const blue = params[index + 4];
-    return isFiniteSgrParam(red) && isFiniteSgrParam(green) && isFiniteSgrParam(blue)
+    return isFiniteSgrParam(red) &&
+      isFiniteSgrParam(green) &&
+      isFiniteSgrParam(blue)
       ? [param, colorMode, red, green, blue]
       : undefined;
   }
@@ -59,7 +66,11 @@ export function stripBackgroundSgrParams(params: readonly number[]): number[] {
       continue;
     }
 
-    if (param === 49 || (param >= 40 && param <= 47) || (param >= 100 && param <= 107)) {
+    if (
+      param === 49 ||
+      (param >= 40 && param <= 47) ||
+      (param >= 100 && param <= 107)
+    ) {
       continue;
     }
 
@@ -72,7 +83,8 @@ export function stripBackgroundSgrParams(params: readonly number[]): number[] {
         index += sequence.length - 1;
         continue;
       }
-      const advance = params[index + 1] === 5 ? 2 : params[index + 1] === 2 ? 4 : 0;
+      const advance =
+        params[index + 1] === 5 ? 2 : params[index + 1] === 2 ? 4 : 0;
       if (advance > 0) {
         index += advance;
         if (param === 38) {

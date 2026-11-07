@@ -48,9 +48,11 @@ export function patchUserMessageRenderPrototype(
   }
 
   const previousOriginalRender = prototype.__piUserMessageOriginalRender;
-  const hasPreviousPatch = typeof previousOriginalRender === "function"
-    && previousOriginalRender !== prototype.render;
-  const isCurrentPatch = prototype.__piUserMessagePatchOwner === USER_MESSAGE_PATCH_OWNER;
+  const hasPreviousPatch =
+    typeof previousOriginalRender === "function" &&
+    previousOriginalRender !== prototype.render;
+  const isCurrentPatch =
+    prototype.__piUserMessagePatchOwner === USER_MESSAGE_PATCH_OWNER;
   let restoredStalePatch = false;
 
   if (hasPreviousPatch && !isCurrentPatch) {
@@ -62,10 +64,10 @@ export function patchUserMessageRenderPrototype(
   }
 
   if (
-    !restoredStalePatch
-    && prototype.__piUserMessageNativePatched
-    && prototype.__piUserMessagePatchVersion === patchVersion
-    && typeof prototype.__piUserMessageOriginalRender === "function"
+    !restoredStalePatch &&
+    prototype.__piUserMessageNativePatched &&
+    prototype.__piUserMessagePatchVersion === patchVersion &&
+    typeof prototype.__piUserMessageOriginalRender === "function"
   ) {
     return;
   }

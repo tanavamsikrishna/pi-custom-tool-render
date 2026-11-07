@@ -1,6 +1,7 @@
 import { ANSI_SGR_PATTERN, sanitizeAnsiForThemedOutput } from "./ansi-utils.js";
 
-const OSC_PROMPT_CONTROL_SEQUENCE_PATTERN = /\x1b\](?:133|633);[A-Z](?:;[^\x07\x1b]*)?(?:\x07|\x1b\\)/g;
+const OSC_PROMPT_CONTROL_SEQUENCE_PATTERN =
+  /\x1b\](?:133|633);[A-Z](?:;[^\x07\x1b]*)?(?:\x07|\x1b\\)/g;
 const USER_MESSAGE_BACKGROUND = "userMessageBg";
 const ANSI_BG_RESET = "\x1b[49m";
 const USER_MESSAGE_VERTICAL_PADDING_LINES = 1;
@@ -62,8 +63,10 @@ export function applyUserMessageBackground(
 }
 
 function isVisuallyEmptyLine(line: string): boolean {
-  const withoutControlSequences = stripOscPromptControlSequences(line)
-    .replace(ANSI_SGR_PATTERN, "");
+  const withoutControlSequences = stripOscPromptControlSequences(line).replace(
+    ANSI_SGR_PATTERN,
+    "",
+  );
   return withoutControlSequences.trim().length === 0;
 }
 

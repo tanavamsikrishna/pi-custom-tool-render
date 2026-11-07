@@ -34,9 +34,7 @@ function restoreUserMessageRender(): void {
   unregisterUserMessageRenderPrototypePatch(getUserMessagePrototype());
 }
 
-export default function registerNativeUserMessageBox(
-  pi: ExtensionAPI,
-): void {
+export default function registerNativeUserMessageBox(pi: ExtensionAPI): void {
   if (registeredNativeUserMessageApis.has(pi)) {
     return;
   }

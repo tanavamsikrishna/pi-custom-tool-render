@@ -5,7 +5,10 @@
  * There is no /tools command and no aggregate Run ledger.
  * Session events bind the tool-call detail overlay.
  */
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { loadToolDisplayConfigFromSettings } from "./config-store.js";
 import { registerToolRenderers } from "./custom-tool-resolver.js";
 import { bindDetailOpener, clearDetailClickState } from "./detail-click.js";

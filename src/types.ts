@@ -14,28 +14,28 @@ export type DiffCollapsedMode = (typeof DIFF_COLLAPSED_MODES)[number];
 
 /** Effective runtime configuration. Output groups are fixed, not stored here. */
 export interface ToolDisplayConfig {
-	/** Expanded diff row cap. Zero means no cap. Not a settings key; the popup sets 0. */
-	expandedPreviewMaxRows: number;
-	diffViewMode: DiffViewMode;
-	diffIndicatorMode: DiffIndicatorMode;
-	diffSplitMinWidth: number;
-	diffCollapsedRows: number;
-	diffCollapsedMode: DiffCollapsedMode;
-	diffWordWrap: boolean;
+  /** Expanded diff row cap. Zero means no cap. Not a settings key; the popup sets 0. */
+  expandedPreviewMaxRows: number;
+  diffViewMode: DiffViewMode;
+  diffIndicatorMode: DiffIndicatorMode;
+  diffSplitMinWidth: number;
+  diffCollapsedRows: number;
+  diffCollapsedMode: DiffCollapsedMode;
+  diffWordWrap: boolean;
 }
 
 export const DEFAULT_TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
-	expandedPreviewMaxRows: 4000,
-	diffViewMode: "auto",
-	diffIndicatorMode: "bars",
-	diffSplitMinWidth: 120,
-	diffCollapsedRows: 24,
-	diffCollapsedMode: "body",
-	diffWordWrap: true,
+  expandedPreviewMaxRows: 4000,
+  diffViewMode: "auto",
+  diffIndicatorMode: "bars",
+  diffSplitMinWidth: 120,
+  diffCollapsedRows: 24,
+  diffCollapsedMode: "body",
+  diffWordWrap: true,
 };
 
 export interface ConfigLoadResult {
-	config: ToolDisplayConfig;
-	error?: string;
-	notice?: string;
+  config: ToolDisplayConfig;
+  error?: string;
+  notice?: string;
 }
