@@ -28,6 +28,7 @@ export interface ToolArgumentPreview {
 }
 
 const PATH_FIELDS = ["path", "file_path"] as const;
+const READ_FIELDS = ["path", "file_path", "offset", "limit"] as const;
 const overrides = new Map<string, ToolArgumentPreview>();
 
 export function registerToolArgumentPreview(
@@ -51,6 +52,24 @@ function textField(args: Record<string, unknown>, key: string): string | undefin
 
 function pathField(args: Record<string, unknown>): string | undefined {
   return textField(args, "file_path") ?? textField(args, "path");
+}
+
+function integerField(args: Record<string, unknown>, key: string): number | undefined {
+  const value = args[key];
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  if (typeof value === "string" && /^-?\d+$/.test(value)) return Number(value);
+  return undefined;
+}
+
+/** `4-13` is a window, `4-` starts at a line, `1-10` is a count from the top. */
+function readSpan(offset: number | undefined, limit: number | undefined): string | undefined {
+  const start = offset !== undefined && offset >= 2 ? offset : undefined;
+  const count = limit !== undefined && limit >= 0 ? limit : undefined;
+  if (start === undefined && count === undefined) return undefined;
+  const from = start ?? 1;
+  if (count === undefined) return `${from}-`;
+  if (count === 0) return `${from}+0`;
+  return `${from}-${from + count - 1}`;
 }
 
 const pathOnly: ToolArgumentPreview = {
@@ -80,7 +99,20 @@ function formatSearch(
 }
 
 const builtins: Record<string, ToolArgumentPreview> = {
-  read: pathOnly,
+  read: {
+    fields: READ_FIELDS,
+    format(args, context, maxLength) {
+      const file = pathField(args);
+      const span = readSpan(integerField(args, "offset"), integerField(args, "limit"));
+      if (!file) return span;
+      const location = formatPreviewPath(file, context, maxLength);
+      if (!span) return location;
+      const suffix = ` ${span}`;
+      const suffixLength = Array.from(suffix).length;
+      if (suffixLength >= maxLength) return truncatePreview(span, maxLength);
+      return truncatePreview(location, maxLength - suffixLength) + suffix;
+    },
+  },
   edit: pathOnly,
   write: pathOnly,
   bash: {

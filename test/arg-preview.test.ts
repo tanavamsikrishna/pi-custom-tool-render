@@ -118,7 +118,11 @@ test("edit and write only sanitize the path", () => {
 });
 
 test("known tools render one sanitized string and never show timeouts", () => {
-  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4, limit: 10 }), "a.ts src/");
+  assert.equal(preview("read", { path: "/proj/src/a.ts" }), "a.ts src/");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 1 }), "a.ts src/");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4 }), "a.ts src/ 4-");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", limit: 10 }), "a.ts src/ 1-10");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4, limit: 10 }), "a.ts src/ 4-13");
   assert.equal(preview("bash", { command: "ls -la", timeout: 30 }), "ls -la");
   assert.equal(preview("bash", { command: "ls\n-la" }), "ls -la");
   assert.equal(

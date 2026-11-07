@@ -82,7 +82,7 @@ test("built-in call lines use the tool preview", () => {
   const cwd = "/proj";
   assert.match(
     callLine("read", { path: "/proj/src/a.ts", offset: 2 }, { cwd }),
-    /read \(a\.ts src\/\)/,
+    /read \(a\.ts src\/ 2-\)/,
   );
   assert.match(callLine("bash", { command: "ls -la", timeout: 5 }, { cwd }), /bash \(ls -la\)/);
   assert.equal(
