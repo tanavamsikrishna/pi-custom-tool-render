@@ -1,6 +1,6 @@
 /**
  * Formats tool-call arguments for a call line.
- * Path display is `<basename> <parent/>`. The flat fallback is `key=value · key=value`.
+ * Path display is the path itself, shortened against cwd or home. The flat fallback is `key=value · key=value`.
  * Does not clean untrusted input; that is arg-sanitize.
  */
 import os from "node:os";
@@ -8,7 +8,7 @@ import path from "node:path";
 import { cleanPreviewText, sanitizePreviewArgs, truncatePreview } from "./arg-sanitize.js";
 
 export const CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH = 120;
-export const ARGUMENT_PARENT_PATH_MAX_LENGTH = 48;
+export const ARGUMENT_PATH_MAX_LENGTH = 96;
 const SIMPLE_VALUE_PATTERN = /^[A-Za-z0-9_./:@+-]+$/;
 
 export interface ArgumentPreviewContext {
@@ -59,26 +59,22 @@ function leftTruncatePath(value: string, maxLength: number): string {
   return tail;
 }
 
-function formatParent(resolved: string, cwd: string, home: string): string {
-  const parent = path.dirname(resolved);
-  const fromCwd = path.relative(cwd, resolved);
-  const inCwd =
-    fromCwd === "" ||
-    (fromCwd !== ".." && !fromCwd.startsWith(`..${path.sep}`) && !path.isAbsolute(fromCwd));
-  if (inCwd) {
-    const relative = path.relative(cwd, parent);
-    return relative === "" ? "." : relative.split(path.sep).join("/");
-  }
+function isInside(resolved: string, root: string): boolean {
+  const relative = path.relative(root, resolved);
+  return (
+    relative === "" ||
+    (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
+}
 
-  const fromHome = path.relative(home, resolved);
-  const inHome =
-    fromHome === "" ||
-    (fromHome !== ".." && !fromHome.startsWith(`..${path.sep}`) && !path.isAbsolute(fromHome));
-  if (inHome) {
-    const relative = path.relative(home, parent);
-    return relative === "" ? "~" : `~/${relative.split(path.sep).join("/")}`;
+function shortenPath(resolved: string, cwd: string, home: string): string {
+  if (resolved === cwd) return ".";
+  if (resolved === home) return "~";
+  if (isInside(resolved, cwd)) {
+    return `./${path.relative(cwd, resolved).split(path.sep).join("/")}`;
   }
-  return parent.split(path.sep).join("/");
+  if (isInside(resolved, home)) return `~/${path.relative(home, resolved).split(path.sep).join("/")}`;
+  return resolved.split(path.sep).join("/");
 }
 
 export function formatPreviewPath(
@@ -95,19 +91,10 @@ export function formatPreviewPath(
   const expanded =
     cleaned === "~" ? home : cleaned.startsWith("~/") ? path.join(home, cleaned.slice(2)) : cleaned;
   const resolved = path.resolve(cwd, expanded);
-  if (resolved === cwd) return ".";
-  if (resolved === home) return "~";
-  if (resolved === path.parse(resolved).root) return resolved;
-
-  const base = path.basename(resolved);
-  const parentLimit = Math.min(ARGUMENT_PARENT_PATH_MAX_LENGTH, maxLength);
-  const rawParent = formatParent(resolved, cwd, home);
-  const budget = rawParent.endsWith("/") ? parentLimit : Math.max(0, parentLimit - 1);
-  const shortened = leftTruncatePath(rawParent, budget);
-  const parent = shortened.endsWith("/") ? shortened : `${shortened}/`;
-  const room = maxLength - Array.from(parent).length - 1;
-  if (room < 1) return truncatePreview(parent, maxLength);
-  return truncatePreview(base, room) + " " + parent;
+  return leftTruncatePath(
+    shortenPath(resolved, cwd, home),
+    Math.min(ARGUMENT_PATH_MAX_LENGTH, previewLimit(maxLength)),
+  );
 }
 
 export function formatFlatArgumentPreview(

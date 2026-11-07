@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { sanitizePreviewArgs } from "../src/arg-sanitize.ts";
 import {
-  ARGUMENT_PARENT_PATH_MAX_LENGTH,
+  ARGUMENT_PATH_MAX_LENGTH,
   formatPreviewPath,
 } from "../src/arg-preview.ts";
 import {
@@ -20,61 +20,56 @@ function preview(toolName: string, args: unknown): string {
   return formatToolArgumentPreview(toolName, args, location);
 }
 
-function parentOf(formatted: string): string {
-  const splitAt = formatted.indexOf(" ");
-  return splitAt < 0 ? "" : formatted.slice(splitAt + 1);
-}
-
-test("paths inside cwd show the basename and the relative parent", () => {
+test("paths inside cwd show the relative path", () => {
   assert.equal(
     formatPreviewPath("/proj/src/arg-preview.ts", location),
-    "arg-preview.ts src/",
+    "./src/arg-preview.ts",
   );
-  assert.equal(formatPreviewPath("/proj/README.md", location), "README.md ./");
-  assert.equal(formatPreviewPath("src/a.ts", location), "a.ts src/");
+  assert.equal(formatPreviewPath("/proj/README.md", location), "./README.md");
+  assert.equal(formatPreviewPath("src/a.ts", location), "./src/a.ts");
   assert.equal(formatPreviewPath("/proj", location), ".");
   assert.equal(formatPreviewPath(".", location), ".");
+  assert.equal(formatPreviewPath("/proj-other/a.ts", location), "/proj-other/a.ts");
 });
 
 test("paths inside home use ~ and paths outside home stay absolute", () => {
   assert.equal(
     formatPreviewPath("/Users/vamsi/.pi/agent/settings.json", location),
-    "settings.json ~/.pi/agent/",
+    "~/.pi/agent/settings.json",
   );
-  assert.equal(formatPreviewPath("/Users/vamsi/notes.txt", location), "notes.txt ~/");
+  assert.equal(formatPreviewPath("/Users/vamsi/notes.txt", location), "~/notes.txt");
   assert.equal(formatPreviewPath("/Users/vamsi", location), "~");
-  assert.equal(formatPreviewPath("~/notes.txt", location), "notes.txt ~/");
+  assert.equal(formatPreviewPath("~/notes.txt", location), "~/notes.txt");
   assert.equal(
     formatPreviewPath("../../.pi/agent/settings.json", {
       cwd: "/Users/vamsi/repo/app",
       home: "/Users/vamsi",
     }),
-    "settings.json ~/.pi/agent/",
+    "~/.pi/agent/settings.json",
   );
-  assert.equal(formatPreviewPath("/etc/hosts", location), "hosts /etc/");
+  assert.equal(formatPreviewPath("/etc/hosts", location), "/etc/hosts");
 });
 
-test("a long parent path keeps its tail and is left-truncated", () => {
-  const segments = Array.from({ length: 14 }, (_, index) => `s${String(index).padStart(2, "0")}`);
+test("a long path keeps its tail and is left-truncated", () => {
+  const segments = Array.from({ length: 30 }, (_, index) => `s${String(index).padStart(2, "0")}`);
   const formatted = formatPreviewPath(`/proj/${segments.join("/")}/file.ts`, location);
-  const parent = parentOf(formatted);
-  assert.equal(formatted.startsWith("file.ts "), true);
-  assert.equal(parent.startsWith("…/"), true);
-  assert.equal(parent.endsWith("s13/"), true);
-  assert.equal(parent.includes("s00"), false);
-  assert.ok(Array.from(parent).length <= ARGUMENT_PARENT_PATH_MAX_LENGTH);
+  assert.equal(formatted.endsWith("/file.ts"), true);
+  assert.equal(formatted.startsWith("…/"), true);
+  assert.equal(formatted.includes("s00"), false);
+  assert.ok(Array.from(formatted).length <= ARGUMENT_PATH_MAX_LENGTH);
 
   const homePath = `/Users/vamsi/${segments.join("/")}/file.ts`;
-  const homeParent = parentOf(formatPreviewPath(homePath, location));
-  assert.equal(homeParent.startsWith("~/…/"), true);
-  assert.equal(homeParent.endsWith("s13/"), true);
-  assert.equal(homeParent.includes("s00"), false);
-  assert.ok(Array.from(homeParent).length <= ARGUMENT_PARENT_PATH_MAX_LENGTH);
+  const homeFormatted = formatPreviewPath(homePath, location);
+  assert.equal(homeFormatted.startsWith("~/…/"), true);
+  assert.equal(homeFormatted.endsWith("/file.ts"), true);
+  assert.equal(homeFormatted.includes("s00"), false);
+  assert.ok(Array.from(homeFormatted).length <= ARGUMENT_PATH_MAX_LENGTH);
 });
 
-test("a single overlong parent segment is left-truncated by character", () => {
-  const formatted = formatPreviewPath(`/proj/${"x".repeat(60)}/file.ts`, location);
-  assert.equal(formatted, `file.ts …${"x".repeat(46)}/`);
+test("an overlong path segment is left-truncated by character", () => {
+  const name = "x".repeat(ARGUMENT_PATH_MAX_LENGTH + 12);
+  const formatted = formatPreviewPath(`/proj/${name}`, location);
+  assert.equal(formatted, `…${name.slice(-(ARGUMENT_PATH_MAX_LENGTH - 1))}`);
 });
 
 test("sanitizing walks nested keys and strings, drops timeouts, and dot-joins arrays", () => {
@@ -111,29 +106,29 @@ test("edit and write only sanitize the path", () => {
   assert.deepEqual(sanitizePreviewArgs(args, ["path", "file_path"]), {
     path: "/proj/src/a.ts",
   });
-  assert.equal(preview("edit", args), "a.ts src/");
-  assert.equal(preview("write", args), "a.ts src/");
+  assert.equal(preview("edit", args), "./src/a.ts");
+  assert.equal(preview("write", args), "./src/a.ts");
   assert.equal(preview("edit", args).includes("secret"), false);
   assert.equal(preview("write", args).includes("secret"), false);
 });
 
 test("known tools render one sanitized string and never show timeouts", () => {
-  assert.equal(preview("read", { path: "/proj/src/a.ts" }), "a.ts src/");
-  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 1 }), "a.ts src/");
-  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4 }), "a.ts src/ 4-");
-  assert.equal(preview("read", { path: "/proj/src/a.ts", limit: 10 }), "a.ts src/ 1-10");
-  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4, limit: 10 }), "a.ts src/ 4-13");
+  assert.equal(preview("read", { path: "/proj/src/a.ts" }), "./src/a.ts");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 1 }), "./src/a.ts");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4 }), "./src/a.ts 4-");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", limit: 10 }), "./src/a.ts 1-10");
+  assert.equal(preview("read", { path: "/proj/src/a.ts", offset: 4, limit: 10 }), "./src/a.ts 4-13");
   assert.equal(preview("bash", { command: "ls -la", timeout: 30 }), "ls -la");
   assert.equal(preview("bash", { command: "ls\n-la" }), "ls -la");
   assert.equal(
     preview("bash", { command: "export TOKEN=sk-abcdefghijklmnopqrstuvwxyz" }),
     "•••",
   );
-  assert.equal(preview("grep", { pattern: "foo", path: "/proj/src/a.ts", glob: "*.ts" }), "foo in a.ts src/");
+  assert.equal(preview("grep", { pattern: "foo", path: "/proj/src/a.ts", glob: "*.ts" }), "foo in ./src/a.ts");
   assert.equal(preview("grep", { pattern: "foo" }), "foo");
-  assert.equal(preview("find", { pattern: "*.ts", path: "/etc" }), "*.ts in etc /");
+  assert.equal(preview("find", { pattern: "*.ts", path: "/etc" }), "*.ts in /etc");
   assert.equal(preview("ls", {}), ".");
-  assert.equal(preview("ls", { path: "/proj/src" }), "src ./");
+  assert.equal(preview("ls", { path: "/proj/src" }), "./src");
   assert.equal(preview("custom", { files: ["a", "b"], timeout: 9 }), "files=a.b");
 });
 
@@ -146,5 +141,5 @@ test("a registered preview replaces the builtin and can be removed", () => {
   } finally {
     dispose();
   }
-  assert.equal(preview("read", { path: "/proj/a.ts" }), "a.ts ./");
+  assert.equal(preview("read", { path: "/proj/a.ts" }), "./a.ts");
 });
