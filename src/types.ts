@@ -1,132 +1,53 @@
 /**
- * Runtime config for individual tool rendering.
- * Built-in ownership, custom-tool overrides, and result modes live here.
- * Aggregate layout is not part of this package.
+ * Runtime config for tool-row drawing.
+ * Only diff layout and the call-line intent suffix are configurable.
+ * Result visibility is not a setting: edit and write are diffs, everything else is hidden.
  */
-export const READ_OUTPUT_MODES = ["hidden", "summary", "preview"] as const;
-export const SEARCH_OUTPUT_MODES = ["hidden", "count", "preview"] as const;
-export const MCP_OUTPUT_MODES = ["hidden", "summary", "preview"] as const;
-export const CUSTOM_TOOL_OVERRIDE_KINDS = ["generic", "mcp"] as const;
-export const CUSTOM_TOOL_OUTPUT_MODES = ["hidden", "summary", "preview"] as const;
-export const BASH_OUTPUT_MODES = ["summary", "preview"] as const;
-export const RESULT_DISPLAY_MODES = ["compact", "summary", "preview"] as const;
 export const DIFF_VIEW_MODES = ["auto", "split", "unified"] as const;
 export const DIFF_INDICATOR_MODES = ["bars", "classic", "none"] as const;
 export const DIFF_COLLAPSED_MODES = ["body", "summary"] as const;
 export const TOOL_INTENT_LANGUAGES = ["auto", "zh-CN", "en"] as const;
 export const TOOL_DISPLAY_CONFIG_VERSION = 2 as const;
 
-export type ReadOutputMode = (typeof READ_OUTPUT_MODES)[number];
-export type SearchOutputMode = (typeof SEARCH_OUTPUT_MODES)[number];
-export type McpOutputMode = (typeof MCP_OUTPUT_MODES)[number];
-export type CustomToolOverrideKind = (typeof CUSTOM_TOOL_OVERRIDE_KINDS)[number];
-export type CustomToolOutputMode = (typeof CUSTOM_TOOL_OUTPUT_MODES)[number];
-export type BashOutputMode = (typeof BASH_OUTPUT_MODES)[number];
-export type ResultDisplayMode = (typeof RESULT_DISPLAY_MODES)[number];
 export type DiffViewMode = (typeof DIFF_VIEW_MODES)[number];
 export type DiffIndicatorMode = (typeof DIFF_INDICATOR_MODES)[number];
 export type DiffCollapsedMode = (typeof DIFF_COLLAPSED_MODES)[number];
 export type ToolIntentLanguage = (typeof TOOL_INTENT_LANGUAGES)[number];
-
-export const BUILT_IN_TOOL_OVERRIDE_NAMES = [
-	"read",
-	"grep",
-	"find",
-	"ls",
-	"bash",
-	"edit",
-	"write",
-] as const;
-
-export type BuiltInToolOverrideName = (typeof BUILT_IN_TOOL_OVERRIDE_NAMES)[number];
-
-export interface ToolOverrideOwnership {
-	read: boolean;
-	grep: boolean;
-	find: boolean;
-	ls: boolean;
-	bash: boolean;
-	edit: boolean;
-	write: boolean;
-}
-
-export interface CustomToolOverrideConfig {
-	kind: CustomToolOverrideKind;
-	outputMode: CustomToolOutputMode;
-}
 
 export interface ToolIntentConfig {
 	language: ToolIntentLanguage;
 	maxLength: number;
 }
 
-/** Effective runtime configuration after public result modes are resolved. */
+/** Effective runtime configuration. Output groups are fixed, not stored here. */
 export interface ToolDisplayConfig {
-	debug: boolean;
-	registerToolOverrides: ToolOverrideOwnership;
-	passthroughToolNames: string[];
-	customToolOverrides: Record<string, CustomToolOverrideConfig>;
 	toolIntent: ToolIntentConfig;
-	bashCommandPreviewRows: number;
-	resultMode: ResultDisplayMode;
-	readOutputMode: ReadOutputMode;
-	searchOutputMode: SearchOutputMode;
-	mcpOutputMode: McpOutputMode;
-	previewRows: number;
+	/** Expanded diff row cap. Zero means no cap. Not a settings key; the popup sets 0. */
 	expandedPreviewMaxRows: number;
-	bashOutputMode: BashOutputMode;
 	diffViewMode: DiffViewMode;
 	diffIndicatorMode: DiffIndicatorMode;
 	diffSplitMinWidth: number;
 	diffCollapsedRows: number;
 	diffCollapsedMode: DiffCollapsedMode;
 	diffWordWrap: boolean;
-	showTruncationHints: boolean;
-	showRtkCompactionHints: boolean;
 }
 
 export const DEFAULT_TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
-	debug: false,
-	registerToolOverrides: {
-		read: true,
-		grep: true,
-		find: true,
-		ls: true,
-		bash: true,
-		edit: true,
-		write: true,
-	},
-	passthroughToolNames: [],
-	customToolOverrides: {},
 	toolIntent: {
 		language: "auto",
 		maxLength: 96,
 	},
-	bashCommandPreviewRows: 1,
-	resultMode: "compact",
-	readOutputMode: "hidden",
-	searchOutputMode: "hidden",
-	mcpOutputMode: "hidden",
-	previewRows: 8,
 	expandedPreviewMaxRows: 4000,
-	bashOutputMode: "preview",
 	diffViewMode: "auto",
 	diffIndicatorMode: "bars",
 	diffSplitMinWidth: 120,
 	diffCollapsedRows: 24,
 	diffCollapsedMode: "body",
 	diffWordWrap: true,
-	showTruncationHints: false,
-	showRtkCompactionHints: false,
 };
 
 export interface ConfigLoadResult {
 	config: ToolDisplayConfig;
 	error?: string;
 	notice?: string;
-}
-
-export interface ConfigSaveResult {
-	success: boolean;
-	error?: string;
 }

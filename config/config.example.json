@@ -1,15 +1,8 @@
 {
   "version": 2,
   "intent": {
-    "language": "zh-CN",
+    "language": "auto",
     "maxLength": 96
-  },
-  "toolCalls": {
-    "bashCommandPreviewRows": 1
-  },
-  "results": {
-    "mode": "summary",
-    "previewRows": 10
   },
   "diff": {
     "layout": "auto",
@@ -18,14 +11,5 @@
     "collapsedRows": 24,
     "collapsedMode": "body",
     "wordWrap": true
-  },
-  "tools": {
-    "passthrough": []
-  },
-  "advanced": {
-    "expandedRows": 500,
-    "truncationHints": false,
-    "rtkCompactionHints": false,
-    "debug": false
   }
 }

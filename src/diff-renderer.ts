@@ -96,7 +96,6 @@ interface DiffRenderOptions {
 	filePath?: string;
 	previousContent?: string;
 	fileExistedBeforeWrite?: boolean;
-	headerLabel?: string;
 }
 
 type CodeLineHighlighter = (line: string) => string;
@@ -2169,18 +2168,6 @@ export function renderEditDiffResult(
 	};
 }
 
-function renderWriteHeader(
-	wasOverwrite: boolean,
-	width: number,
-	theme: DiffTheme,
-	headerLabel?: string,
-): string {
-	const actionLabel = headerLabel?.trim() || (wasOverwrite ? "overwritten" : "created");
-	return stabilizeBackgroundResets(
-		truncateToWidth(theme.fg("toolOutput", `↳ ${emphasis(theme, actionLabel)}`), width),
-	);
-}
-
 type WriteDiffOperationKind = "context" | "remove" | "add";
 
 interface WriteDiffOperation {
@@ -2468,23 +2455,17 @@ export function renderWriteDiffResult(
 				return cached;
 			}
 
-			const header = renderWriteHeader(
-				options.fileExistedBeforeWrite === true,
-				safeWidth,
-				theme,
-				options.headerLabel,
-			);
 			if (overwriteGuard) {
 				return cache.set(safeWidth, options.expanded, mode, clampDiffLinesToWidth(
-					[header, ...renderWriteOverwriteGuardRows(overwriteGuard, safeWidth, theme)],
+					renderWriteOverwriteGuardRows(overwriteGuard, safeWidth, theme),
 					safeWidth,
 				));
 			}
 
 			if (mode === "summary") {
 				const summaryRows = approximateStats.lines === 0
-					? [header]
-					: [header, ...renderSingleDiffRow(buildDiffSummaryText(approximateStats, safeWidth), "toolOutput", safeWidth, theme)];
+					? []
+					: renderSingleDiffRow(buildDiffSummaryText(approximateStats, safeWidth), "toolOutput", safeWidth, theme);
 				const rows = forceSummary && approximateStats.lines > 0
 					? [...summaryRows, ...renderDiffExpandHintRow(safeWidth, theme)]
 					: summaryRows;
@@ -2525,8 +2506,8 @@ export function renderWriteDiffResult(
 			);
 			const frame = renderDiffFrameLine(safeWidth, theme);
 			const renderedLines = mode === "unified"
-				? [header, frame, ...bodyWithLimit, frame]
-				: [header, ...bodyWithLimit];
+				? [frame, ...bodyWithLimit, frame]
+				: bodyWithLimit;
 			const finalLines = clampDiffLinesToWidth(renderedLines, safeWidth);
 			return cache.set(safeWidth, options.expanded, mode, finalLines);
 		},

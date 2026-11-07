@@ -10,10 +10,6 @@ export function registerCleanup(callback: () => void): void {
   cleanupCallbacks.push(callback);
 }
 
-export function registerTimer(timer: ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>): void {
-  registerCleanup(() => clearInterval(timer as ReturnType<typeof setInterval>));
-}
-
 export function disposeAll(): void {
   if (isDisposed) return;
   isDisposed = true;
@@ -27,8 +23,4 @@ export function disposeAll(): void {
 export function resetDisposed(): void {
   isDisposed = false;
   cleanupCallbacks = [];
-}
-
-export function getCleanupCount(): number {
-  return cleanupCallbacks.length;
 }

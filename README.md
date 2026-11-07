@@ -1,8 +1,8 @@
 # pi-custom-tool-render
 
-Individual tool rendering for Pi, forked from `@zhcsyncer/pi-tool-display-intent` 0.10.1. Built-in rows, diffs, bash intent, and the accent-gutter user message box stay. There is no aggregate Run ledger and no `/tools` command.
+Individual tool rendering for Pi, forked from `@zhcsyncer/pi-tool-display-intent` 0.10.1. This package draws every tool row. `edit` and `write` results are diffs. Every other result is hidden. The accent-gutter user message box stays. There is no aggregate Run ledger and no `/tools` command. A plain click on a row opens the detail overlay. `Ctrl+O` still expands or collapses that row inline.
 
-Do not load this package together with `npm:@zhcsyncer/pi-tool-display-intent`. The first registration of each built-in name wins.
+Do not load this package together with `npm:@zhcsyncer/pi-tool-display-intent`.
 
 ## Install
 
@@ -10,25 +10,16 @@ Disable the upstream package, then load this directory with `pi install` or `pi 
 
 ## Use
 
-Settings live only in `~/.pi/agent/extension-data/pi-custom-tool-render/config.json`. Edit that file, then `/reload`. On first load, if that file is missing, settings are seeded from `extension-data/pi-tool-display-intent/config.json`. Aggregate-only keys are dropped. The original file is not written.
+Settings are the `pi-custom-tool-render` key from `pi.getSettings()`. That value is stored in `~/.pi/agent/settings.json`. Edit it, then `/reload`. `getSettings()` throws until Pi binds the extension runtime. The old `extension-data/pi-custom-tool-render/config.json` is not read.
 
-A name that is not a built-in and is not MCP-shaped uses the generic drawer with `summary` results. Memory tools do not need a `tools.custom` entry. That drawer replaces the author's result line, including `Found 0 results`.
-
-`tools.custom` is an override. `renderer` is `generic` or `mcp`. `mode` is `hidden`, `summary`, or `preview`. A listed name wins over both the generic fallback and the MCP name rule.
+Every name uses the same call line: `name (args)`. `edit` and `write` then show a diff. Every other tool, including built-ins, MCP tools, and other extensions, shows no result body. Pi's own drawers are not used. Older `results.mode` and `tools.custom` keys are ignored.
 
 ```json
 {
   "version": 2,
-  "results": { "mode": "summary" },
-  "tools": {
-    "custom": {
-      "web_search": { "renderer": "generic", "mode": "preview" }
-    }
-  }
+  "diff": { "layout": "auto" }
 }
 ```
-
-Automatic MCP names (`mcp`, `mcp_*`, `mcp-*`, `*_mcp`, including `mcp__server__tool`) use the MCP drawer without a `tools.custom` entry. The call line shows an argument count, not values. Result visibility follows `results.mode`: `compact` hides the body, `summary` and `preview` follow. A `tools.custom` entry's `mode` is the result override. The call line still renders when the result is hidden.
 
 `displaySummary` is appended only when the arguments already contain it. This package does not add that field to another extension's schema.
 

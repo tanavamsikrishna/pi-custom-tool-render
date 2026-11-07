@@ -1,16 +1,10 @@
 /**
- * Resolver decision tests for custom and MCP tool drawing.
- * Built-ins call next(). Every other name returns drawers and does not.
+ * Every tool name is drawn here. next() is never called.
+ * edit and write results are diffs. Every other result is empty.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ToolRenderers } from "@earendil-works/pi-coding-agent";
-import {
-	isMcpToolName,
-	mcpCallLabel,
-	resolveCustomToolRenderers,
-} from "../src/custom-tool-resolver.ts";
-import { formatGenericToolCallLine } from "../src/tool-overrides.ts";
+import { resolveToolRenderers } from "../src/custom-tool-resolver.ts";
 import { DEFAULT_TOOL_DISPLAY_CONFIG, type ToolDisplayConfig } from "../src/types.ts";
 
 const theme = {
@@ -19,152 +13,86 @@ const theme = {
 };
 
 function config(overrides: Partial<ToolDisplayConfig> = {}): ToolDisplayConfig {
-	return {
-		...DEFAULT_TOOL_DISPLAY_CONFIG,
-		customToolOverrides: {},
-		...overrides,
-	};
+	return { ...DEFAULT_TOOL_DISPLAY_CONFIG, ...overrides };
 }
 
 function rendered(component: { render(width: number): string[] } | undefined): string {
 	return component?.render(120).join("\n") ?? "";
 }
 
-test("isMcpToolName matches only the wiring name shapes", () => {
-	assert.equal(isMcpToolName("mcp"), true);
-	assert.equal(isMcpToolName("mcp_foo"), true);
-	assert.equal(isMcpToolName("mcp-foo"), true);
-	assert.equal(isMcpToolName("foo_mcp"), true);
-	assert.equal(isMcpToolName("mcp__docs__search"), true);
-	assert.equal(isMcpToolName("memory_search"), false);
-	assert.equal(isMcpToolName("web_search"), false);
-	assert.equal(isMcpToolName("read"), false);
-	assert.equal(isMcpToolName(""), false);
-});
+function callLine(toolName: string, args: unknown): string {
+	const resolved = resolveToolRenderers(toolName, () => config());
+	return rendered(resolved.renderCall?.(args, theme as never, { executionStarted: false } as never) as { render(width: number): string[] });
+}
 
-test("mcpCallLabel derives a display target from the name only", () => {
-	assert.equal(mcpCallLabel("mcp"), "MCP Proxy");
-	assert.equal(mcpCallLabel("mcp__docs__search"), "docs/search");
-	assert.equal(mcpCallLabel("mcp_foo"), "mcp_foo");
-	assert.equal(mcpCallLabel("foo_mcp"), "foo_mcp");
-});
+function resultLine(
+	toolName: string,
+	result: unknown,
+	context?: unknown,
+): string {
+	const resolved = resolveToolRenderers(toolName, () => config());
+	return rendered(resolved.renderResult?.(
+		result,
+		{ expanded: false, isPartial: false },
+		theme as never,
+		context as never,
+	) as { render(width: number): string[] });
+}
 
-test("built-in names return next() and do not build drawers", () => {
-	const author: ToolRenderers = { renderCall: () => "author" as never };
-	let called = false;
-	const resolved = resolveCustomToolRenderers("read", () => {
-		called = true;
-		return author;
-	}, () => config());
-	assert.equal(called, true);
-	assert.equal(resolved, author);
-});
-
-test("tools.custom returns drawers and does not call next()", () => {
-	const author: ToolRenderers = { renderCall: () => "author" as never };
-	let called = false;
-	const resolved = resolveCustomToolRenderers("web_search", () => {
-		called = true;
-		return author;
-	}, () => config({
-		customToolOverrides: { web_search: { kind: "generic", outputMode: "summary" } },
-	}));
-	assert.equal(called, false);
-	assert.notEqual(resolved, author);
-	assert.equal(resolved?.renderShell, "self");
-	assert.equal(typeof resolved?.renderCall, "function");
-	assert.equal(typeof resolved?.renderResult, "function");
-});
-
-test("MCP-shaped names take the MCP branch without an override", () => {
-	for (const toolName of ["mcp", "mcp_foo", "mcp-foo", "foo_mcp", "mcp__docs__search"]) {
-		const resolved = resolveCustomToolRenderers(toolName, () => {
-			throw new Error(`next() called for ${toolName}`);
-		}, () => config({ mcpOutputMode: "hidden" }));
-		const text = rendered(resolved?.renderCall?.({ query: "secret-value" }, theme as never, {} as never) as { render(width: number): string[] });
-		assert.equal(text.includes("secret-value"), false, toolName);
-		assert.match(text, /1 arg/, toolName);
+test("no tool name falls through to next()", () => {
+	for (const toolName of ["read", "bash", "edit", "write", "memory_search", "mcp__docs__search"]) {
+		const resolved = resolveToolRenderers(toolName, () => config());
+		assert.equal(resolved.renderShell, "self", toolName);
+		assert.equal(typeof resolved.renderCall, "function", toolName);
+		assert.equal(typeof resolved.renderResult, "function", toolName);
 	}
 });
 
-test("names without an override or MCP shape use generic summary and do not call next()", () => {
-	for (const toolName of ["memory_search", "web_search"]) {
-		let called = false;
-		const resolved = resolveCustomToolRenderers(toolName, () => {
-			called = true;
-			return { renderResult: () => "Found 0 results" as never };
-		}, () => config());
-		assert.equal(called, false, toolName);
-		assert.equal(resolved?.renderShell, "self", toolName);
-		const call = rendered(resolved?.renderCall?.({ query: "docs" }, theme as never, { executionStarted: false } as never) as { render(width: number): string[] });
-		assert.match(call, /query=docs/, toolName);
-		const result = rendered(resolved?.renderResult?.(
-			{ content: [{ type: "text", text: "one\ntwo" }], details: undefined },
-			{ expanded: false, isPartial: false },
-			theme as never,
-			{} as never,
-		) as { render(width: number): string[] });
-		assert.match(result, /2 lines returned/, toolName);
-		assert.equal(result.includes("Found 0 results"), false, toolName);
-	}
+test("the call line is the tool name plus an argument preview", () => {
+	const text = callLine("memory_search", { query: "docs" });
+	assert.match(text, /^ .*memory_search \(query=docs\)/);
+	assert.equal(text.includes("—"), false);
 });
 
-test("a custom entry wins over the MCP name rule", () => {
-	const resolved = resolveCustomToolRenderers("mcp__docs__search", () => {
-		throw new Error("next() called");
-	}, () => config({
-		customToolOverrides: {
-			"mcp__docs__search": { kind: "generic", outputMode: "preview" },
-		},
-	}));
-	const text = rendered(resolved?.renderCall?.({ query: "secret-value" }, theme as never, { executionStarted: false } as never) as { render(width: number): string[] });
-	assert.match(text, /query=secret-value/);
-	assert.equal(resolved?.renderShell, "self");
-});
-
-test("renderCall and renderResult read config after the resolver returns", () => {
-	let outputMode: "hidden" | "summary" = "hidden";
-	const getConfig = (): ToolDisplayConfig => config({
-		customToolOverrides: { web_search: { kind: "generic", outputMode } },
-	});
-	const resolved = resolveCustomToolRenderers("web_search", () => undefined, getConfig);
-	assert.equal(resolved?.renderShell, "self");
-	const hidden = rendered(resolved?.renderResult?.(
-		{ content: [{ type: "text", text: "one\ntwo" }], details: undefined },
-		{ expanded: false, isPartial: false },
-		theme as never,
-		{} as never,
-	) as { render(width: number): string[] });
-	assert.equal(hidden.includes("2 lines returned"), false);
-	outputMode = "summary";
-	const call = rendered(resolved?.renderCall?.({ query: "docs" }, theme as never, { executionStarted: false } as never) as { render(width: number): string[] });
-	assert.match(call, /query=docs/);
-	const result = rendered(resolved?.renderResult?.(
-		{ content: [{ type: "text", text: "one\ntwo" }], details: undefined },
-		{ expanded: false, isPartial: false },
-		theme as never,
-		{} as never,
-	) as { render(width: number): string[] });
-	assert.match(result, /2 lines returned/);
-});
-
-test("formatGenericToolCallLine suffixes an existing displaySummary and does not invent one", () => {
-	const displayConfig = config();
-	const context = { executionStarted: false };
-	const withSummary = rendered(formatGenericToolCallLine(
-		"web_search",
-		{ query: "docs", displaySummary: "Checking docs" },
-		theme as never,
-		displayConfig,
-		context as never,
-	) as { render(width: number): string[] });
-	const withoutSummary = rendered(formatGenericToolCallLine(
-		"web_search",
-		{ query: "docs" },
-		theme as never,
-		displayConfig,
-		context as never,
-	) as { render(width: number): string[] });
+test("an existing displaySummary is suffixed and is not invented", () => {
+	const withSummary = callLine("web_search", { query: "docs", displaySummary: "Checking docs" });
+	const withoutSummary = callLine("web_search", { query: "docs" });
 	assert.match(withSummary, /Checking docs/);
 	assert.equal(withoutSummary.includes("—"), false);
+});
+
+test("non-diff tools hide the result body", () => {
+	for (const toolName of ["read", "bash", "memory_search", "mcp"]) {
+		const text = resultLine(toolName, {
+			content: [{ type: "text", text: "Found 0 results" }],
+			details: undefined,
+		});
+		assert.equal(text, "", toolName);
+	}
+});
+
+test("edit renders the returned diff and write renders the written content", () => {
+	const edit = resultLine("edit", {
+		content: [{ type: "text", text: "applied" }],
+		details: { diff: "--- a/file.ts\n+++ b/file.ts\n@@ -1 +1 @@\n-old\n+new\n" },
+	}, { args: { path: "file.ts" } });
+	assert.match(edit, /new/);
+	assert.equal(edit.includes("applied"), false);
+
+	const write = resultLine("write", {
+		content: [{ type: "text", text: "wrote" }],
+		details: undefined,
+	}, { args: { path: "file.ts", content: "hello\n" } });
+	assert.match(write, /hello/);
+	assert.equal(write.includes("wrote"), false);
+});
+
+test("a failed edit shows the error instead of a diff", () => {
+	const text = resultLine("edit", {
+		isError: true,
+		content: [{ type: "text", text: "patch did not match" }],
+		details: { diff: "--- a/file.ts\n+++ b/file.ts\n@@ -1 +1 @@\n-old\n+new\n" },
+	}, { args: { path: "file.ts" } });
+	assert.match(text, /patch did not match/);
+	assert.equal(text.includes("+new"), false);
 });

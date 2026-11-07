@@ -12,21 +12,6 @@ export interface ToolCallStatusContext {
 	isPartial?: boolean;
 }
 
-const CLAUDE_TOOL_LABELS: Record<string, string> = {
-	read: "Read",
-	grep: "Search",
-	find: "Find",
-	ls: "List",
-	bash: "Bash",
-	edit: "Update",
-	write: "Write",
-	mcp: "MCP",
-};
-
-export function getClaudeToolLabel(toolName: string): string {
-	return CLAUDE_TOOL_LABELS[toolName] ?? toolName;
-}
-
 export function formatClaudeStatusMarker(
 	theme: ToolCallStyleTheme,
 	context?: ToolCallStatusContext,
@@ -51,8 +36,8 @@ export function formatClaudeToolCall(
 	runningFrame?: string,
 ): string {
 	const marker = formatClaudeStatusMarker(theme, context, runningFrame);
-	const label = getClaudeToolLabel(toolName);
-	return `${marker} ${theme.fg("toolTitle", theme.bold(label))}(${target})${metadataSuffix}${intentSuffix}`;
+	const label = toolName;
+	return `${marker} ${theme.fg("toolTitle", theme.bold(label))} (${target})${metadataSuffix}${intentSuffix}`;
 }
 
 function isComponent(value: unknown): value is Component {

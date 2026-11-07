@@ -5,11 +5,6 @@ export interface PromptMetadata {
 
 const MAX_PROMPT_SNIPPET_LENGTH = 120;
 
-export const MCP_PROXY_PROMPT_SNIPPET = "Discover, inspect, and call MCP tools across configured servers";
-export const MCP_PROXY_PROMPT_GUIDELINES = [
-	"Use mcp for MCP discovery first: search by capability, describe one exact tool, then call it.",
-] as const;
-
 export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

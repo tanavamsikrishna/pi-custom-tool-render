@@ -60,9 +60,6 @@ const USER_MESSAGE_TOP_MARGIN_LINES = 1;
 const AGGREGATE_USER_GUTTER = "▎";
 const AGGREGATE_USER_GUTTER_GAP = " ";
 const USER_MESSAGE_PATCH_VERSION = 16;
-export const USER_MESSAGE_EXPANDED_KEY = Symbol.for(
-  "pi-tool-display-intent.aggregate-user-expanded.v1",
-);
 
 export type UserMessageSteerPresentation =
   | { hide: true }
@@ -392,15 +389,10 @@ function renderUserMessageBodyLines(
   }
 }
 
-export function isUserMessageExpanded(instance: object): boolean {
-  return (instance as { [USER_MESSAGE_EXPANDED_KEY]?: boolean })[USER_MESSAGE_EXPANDED_KEY] === true;
-}
-
 function installUserMessageSetExpanded(prototype: PatchableUserMessagePrototype): void {
   if (prototype.__piUserMessageSetExpandedPatched) return;
   prototype.__piUserMessageOriginalSetExpanded = prototype.setExpanded;
   prototype.setExpanded = function setAggregateUserMessageExpanded(this: PatchableUserMessagePrototype, expanded: boolean): void {
-    (this as { [USER_MESSAGE_EXPANDED_KEY]?: boolean })[USER_MESSAGE_EXPANDED_KEY] = expanded === true;
     prototype.__piUserMessageOriginalSetExpanded?.call(this, expanded);
     try {
       this.invalidate?.();
