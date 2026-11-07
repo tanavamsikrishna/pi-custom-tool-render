@@ -111,13 +111,9 @@ test("Args and Metadata preserve credentials and token-like values without mutat
 	assert.equal(JSON.parse(model.tabs[1].text).nested[0].PASSWORD, "synthetic-password");
 });
 
-test("native result and steer text are not credential-masked or reformatted as parameter previews", () => {
+test("native result text is not credential-masked or reformatted as a parameter preview", () => {
 	const text = "Original Bearer synthetic-visible-value\n  keep this line";
 	assert.equal(buildDetailModel(native(text)).tabs[0].text, text);
-	const steer = buildDetailModel({ kind: "steer", text: '{"original":true}\n' });
-	assert.equal(steer.tabs[0].text, '{"original":true}\n');
-	assert.equal(steer.showTabs, false);
-	assert.equal(steer.tabs.length, 1);
 });
 
 test("Metadata is optional; details-only output preserves meaningful structured content", () => {
@@ -229,7 +225,7 @@ test("viewport respects width and height including zero/tiny terminals and wide 
 const numbered = Array.from({ length: 30 }, (_, i) => `line ${String(i).padStart(2, "0")}`).join("\n");
 
 test("arrow/page/home/end scrolling clamps at both ends without blank pages", () => {
-	const { component } = viewer({ kind: "steer", text: numbered }, 6);
+	const { component } = viewer(native(numbered), 6);
 	assert.match(plain(component.render(50)), /line 00\s*\nline 01/);
 	component.handleInput("\x1b[A");
 	assert.match(plain(component.render(50)), /line 00/);
@@ -240,15 +236,15 @@ test("arrow/page/home/end scrolling clamps at both ends without blank pages", ()
 	component.handleInput("\x1b[5~");
 	assert.match(plain(component.render(50)), /line 01/);
 	component.handleInput("\x1b[F");
-	assert.match(plain(component.render(50)), /line 26\s*\nline 27\s*\nline 28\s*\nline 29/);
+	assert.match(plain(component.render(50)), /line 27\s*\nline 28\s*\nline 29/);
 	component.handleInput("\x1b[6~");
-	assert.match(plain(component.render(50)), /line 26/);
+	assert.match(plain(component.render(50)), /line 27/);
 	component.handleInput("\x1b[H");
 	assert.match(plain(component.render(50)), /line 00/);
 });
 
 test("normalized wheel input scrolls and consumes boundary events rather than leaking to transcript", () => {
-	const { component } = viewer({ kind: "steer", text: numbered }, 6);
+	const { component } = viewer(native(numbered), 6);
 	component.render(50);
 	assert.equal(component.handleMouse(wheel(-1000))?.handled, true);
 	assert.match(plain(component.render(50)), /line 00/);
@@ -297,7 +293,7 @@ test("clickable tabs use component-local coordinates and expose their actual con
 
 test("long lines wrap into vertically scrollable rows without losing text or SGR", () => {
 	const source = "0123456789abcdefghijklmnopqrstuvwxyz";
-	const { component } = viewer({ kind: "steer", text: `\x1b[31m${source}\x1b[0m` }, 2);
+	const { component } = viewer(native(`\x1b[31m${source}\x1b[0m`), 2);
 	const seen: string[] = [];
 	for (let i = 0; i < 4; i++) {
 		const lines = component.render(10);
@@ -313,7 +309,7 @@ test("long lines wrap into vertically scrollable rows without losing text or SGR
 });
 
 test("resizing reflows the source and keeps the reading position within a long line", () => {
-	const { component } = viewer({ kind: "steer", text: "0123456789abcdefghijklmnopqrstuvwxyz" }, 2);
+	const { component } = viewer(native("0123456789abcdefghijklmnopqrstuvwxyz"), 2);
 	component.render(10);
 	component.handleInput("\x1b[B");
 	component.handleInput("\x1b[B");
@@ -323,7 +319,7 @@ test("resizing reflows the source and keeps the reading position within a long l
 });
 
 test("wrapped CJK and emoji remain whole and accessible by vertical scrolling", () => {
-	const { component } = viewer({ kind: "steer", text: "中文🙂中文🙂" }, 2);
+	const { component } = viewer(native("中文🙂中文🙂"), 2);
 	assert.match(plain(component.render(6)), /^中文🙂/);
 	component.handleInput("\x1b[B");
 	const lines = component.render(6);
@@ -332,7 +328,7 @@ test("wrapped CJK and emoji remain whole and accessible by vertical scrolling", 
 });
 
 test("multiline SGR is carried into scrolled lines and reset before viewer chrome", () => {
-	const { component } = viewer({ kind: "steer", text: "\x1b[31mfirst\nsecond\nthird\x1b[0m" }, 2);
+	const { component } = viewer(native("\x1b[31mfirst\nsecond\nthird\x1b[0m"), 2);
 	component.render(20);
 	component.handleInput("\x1b[B");
 	const lines = component.render(20);
@@ -341,13 +337,11 @@ test("multiline SGR is carried into scrolled lines and reset before viewer chrom
 	assert.doesNotMatch(lines[1], /\x1b\[31m/);
 });
 
-test("steer is read-only, has no tab controls, and Esc closes exactly once", () => {
-	const { component, closes } = viewer({ kind: "steer", text: "original text" });
+test("input does not edit the snapshot, and Esc closes exactly once", () => {
+	const { component, closes } = viewer(native("original text"));
 	const before = plain(component.render(100));
-	component.handleInput("\t");
 	component.handleInput("replacement text");
 	assert.equal(plain(component.render(100)), before);
-	assert.doesNotMatch(before, /Tab tabs|\[Result\]|\[Args\]/);
 	component.handleInput("\x1b");
 	component.handleInput("\x1b");
 	assert.equal(closes(), 1);

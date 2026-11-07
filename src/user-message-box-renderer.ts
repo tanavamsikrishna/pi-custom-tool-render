@@ -1,3 +1,7 @@
+/**
+ * Patches Pi's user message component to draw the accent-gutter box.
+ * Rebuilds markdown when the paste is small enough; otherwise keeps native render.
+ */
 import {
   Markdown,
   truncateToWidth,
@@ -40,7 +44,6 @@ interface CachedUserMessageMarkdownRenderer {
 interface CachedUserMessageFinalOutput {
   width: number;
   theme: UserMessageTheme | undefined;
-  compact: boolean;
   hasMarkdownState: boolean;
   text?: string;
   markdownTheme?: unknown;
@@ -57,13 +60,7 @@ const MIN_BORDER_WIDTH = 8;
 const TITLE_TEXT = " user ";
 const CONTENT_HORIZONTAL_PADDING_COLUMNS = 1;
 const USER_MESSAGE_TOP_MARGIN_LINES = 1;
-const AGGREGATE_USER_GUTTER = "▎";
-const AGGREGATE_USER_GUTTER_GAP = " ";
 const USER_MESSAGE_PATCH_VERSION = 16;
-
-export type UserMessageSteerPresentation =
-  | { hide: true }
-  | { hide?: false; lines: string[] };
 const MAX_USER_MESSAGE_MARKDOWN_TEXT_LENGTH = 100_000;
 const MAX_USER_MESSAGE_MARKDOWN_LINE_COUNT = 2_000;
 
@@ -134,34 +131,6 @@ function getUserMessageContentWidth(totalWidth: number): number {
     1,
     totalWidth - 2 - CONTENT_HORIZONTAL_PADDING_COLUMNS * 2,
   );
-}
-
-function colorThemeText(
-  theme: UserMessageTheme | undefined,
-  color: string,
-  text: string,
-): string {
-  if (!theme) return text;
-  try {
-    return theme.fg(color, text);
-  } catch {
-    return text;
-  }
-}
-
-function wrapAggregatePromptLine(
-  line: string,
-  totalWidth: number,
-  theme: UserMessageTheme | undefined,
-): string {
-  const prefixWidth = visibleWidth(AGGREGATE_USER_GUTTER) + visibleWidth(AGGREGATE_USER_GUTTER_GAP);
-  const contentWidth = Math.max(1, totalWidth - prefixWidth);
-  const normalizedLine = normalizeUserMessageContentLine(line);
-  const content = truncateToWidth(normalizedLine, contentWidth, "", true);
-  const coloredContent = colorThemeText(theme, "userMessageText", content);
-  const padding = " ".repeat(Math.max(0, contentWidth - visibleWidth(content)));
-  const gutter = colorThemeText(theme, "accent", AGGREGATE_USER_GUTTER);
-  return colorUserBackground(theme, `${gutter}${AGGREGATE_USER_GUTTER_GAP}${coloredContent}${padding}`);
 }
 
 function wrapContentLine(
@@ -247,9 +216,8 @@ function hasSameFinalOutputState(
   width: number,
   theme: UserMessageTheme | undefined,
   markdownState: UserMessageMarkdownState | undefined,
-  compact: boolean,
 ): boolean {
-  if (cached.width !== width || cached.theme !== theme || cached.compact !== compact) {
+  if (cached.width !== width || cached.theme !== theme) {
     return false;
   }
 
@@ -273,13 +241,11 @@ function toFinalOutputCacheEntry(
   theme: UserMessageTheme | undefined,
   markdownState: UserMessageMarkdownState | undefined,
   output: string[],
-  compact: boolean,
 ): CachedUserMessageFinalOutput {
   if (!markdownState) {
     return {
       width,
       theme,
-      compact,
       hasMarkdownState: false,
       output,
     };
@@ -288,7 +254,6 @@ function toFinalOutputCacheEntry(
   return {
     width,
     theme,
-    compact,
     hasMarkdownState: true,
     text: markdownState.text,
     markdownTheme: markdownState.theme,
@@ -407,8 +372,6 @@ export function patchNativeUserMessagePrototype(
   prototype: PatchableUserMessagePrototype,
   getTheme: () => UserMessageTheme | undefined,
   isEnabled: () => boolean,
-  isCompact?: () => boolean,
-  getSteerPresentation?: (instance: object, width: number) => UserMessageSteerPresentation | undefined,
 ): void {
   const finalOutputCache = new WeakMap<object, CachedUserMessageFinalOutput>();
   const originalBodyLineCache = new WeakMap<object, CachedUserMessageBodyLines>();
@@ -422,14 +385,6 @@ export function patchNativeUserMessagePrototype(
         const safeWidth = Math.max(0, Math.floor(width));
         if (!isEnabled()) return originalRender.call(this, safeWidth) as string[];
         const canCacheFinalOutput = typeof this === "object" && this !== null;
-        const compact = isCompact?.() === true;
-        // Steers must stay bounded/hidden even when native Markdown rebuilding is
-        // bypassed for a huge paste or a tiny viewport.
-        if (compact && getSteerPresentation && canCacheFinalOutput) {
-          const presentation = getSteerPresentation(this as object, safeWidth);
-          if (presentation?.hide === true) return [];
-          if (presentation?.lines) return presentation.lines;
-        }
         if (safeWidth < MIN_BORDER_WIDTH) return originalRender.call(this, safeWidth) as string[];
         const markdownState = canCacheFinalOutput
           ? extractUserMessageMarkdownState(this as { children?: unknown[] })
@@ -440,14 +395,12 @@ export function patchNativeUserMessagePrototype(
         }
         if (canCacheFinalOutput) {
           const cached = finalOutputCache.get(this as object);
-          if (cached && hasSameFinalOutputState(cached, safeWidth, theme, markdownState, compact)) {
+          if (cached && hasSameFinalOutputState(cached, safeWidth, theme, markdownState)) {
             return cached.output;
           }
         }
 
-        const innerWidth = compact
-          ? Math.max(1, safeWidth - visibleWidth(AGGREGATE_USER_GUTTER) - visibleWidth(AGGREGATE_USER_GUTTER_GAP))
-          : getUserMessageContentWidth(safeWidth);
+        const innerWidth = getUserMessageContentWidth(safeWidth);
         const lines = renderUserMessageBodyLines(
           this,
           innerWidth,
@@ -457,25 +410,19 @@ export function patchNativeUserMessagePrototype(
         );
         const contentLines = normalizeUserMessageContentLines(lines);
         const bodyLines = contentLines.length > 0 ? contentLines : [""];
-        const output = compact
-          ? [
-            wrapAggregatePromptLine("", safeWidth, theme),
-            ...bodyLines.map((renderLine) => wrapAggregatePromptLine(renderLine, safeWidth, theme)),
-            wrapAggregatePromptLine("", safeWidth, theme),
-          ]
-          : [
-            ...Array.from({ length: USER_MESSAGE_TOP_MARGIN_LINES }, () => ""),
-            buildTopBorder(safeWidth, theme),
-            ...addUserMessageVerticalPadding(bodyLines).map((renderLine) =>
-              wrapContentLine(renderLine, safeWidth, theme),
-            ),
-            buildBottomBorder(safeWidth, theme),
-          ];
+        const output = [
+          ...Array.from({ length: USER_MESSAGE_TOP_MARGIN_LINES }, () => ""),
+          buildTopBorder(safeWidth, theme),
+          ...addUserMessageVerticalPadding(bodyLines).map((renderLine) =>
+            wrapContentLine(renderLine, safeWidth, theme),
+          ),
+          buildBottomBorder(safeWidth, theme),
+        ];
 
         if (canCacheFinalOutput) {
           finalOutputCache.set(
             this as object,
-            toFinalOutputCacheEntry(safeWidth, theme, markdownState, output, compact),
+            toFinalOutputCacheEntry(safeWidth, theme, markdownState, output),
           );
         }
 

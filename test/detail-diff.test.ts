@@ -118,7 +118,12 @@ test("diff layout, indicator and wrap choices come from the shared configuration
 test("opening the inspector applies the supplied global diff mode instead of its own default", async () => {
 	let rendered = "";
 	const ctx = { hasUI: true, mode: "tui", ui: {
-		custom: async (factory: Function) => {
+		custom: async (factory: (
+			tui: { terminal: { rows: number }; requestRender: () => void },
+			theme: unknown,
+			keybindings: unknown,
+			done: () => void,
+		) => { render: (width: number) => string[] }) => {
 			const component = factory({ terminal: { rows: 30 }, requestRender() {} }, undefined, undefined, () => {});
 			rendered = plain(component.render(180));
 		},

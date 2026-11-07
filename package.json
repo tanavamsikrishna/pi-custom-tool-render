@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Individual tool rendering for Pi, including custom and MCP tools this package did not register.",
   "type": "module",
+  "scripts": {
+    "lint": "eslint ."
+  },
   "main": "./extensions/index.ts",
   "exports": {
     ".": "./extensions/index.ts"
@@ -10,8 +13,6 @@
   "files": [
     "extensions",
     "src",
-    "config/config.example.json",
-    "config/config.schema.json",
     "README.md",
     "LICENSE",
     "UPSTREAM_LICENSE"
@@ -34,5 +35,10 @@
     "extensions": [
       "./extensions/index.ts"
     ]
+  },
+  "devDependencies": {
+    "eslint": "^10.14.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1"
   }
 }

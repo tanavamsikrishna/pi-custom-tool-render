@@ -1,11 +1,16 @@
 /**
  * Read-only Args / Result / metadata snapshot for the tool-call detail overlay.
  * Sanitizes and truncates tool args and results. Does not draw or open a UI.
- * Callers send kind "tool"; the steer variant is unused in this package.
  */
-export type DetailRequest =
-	| { kind: "tool"; toolName: string; target?: string; args: unknown; result: unknown; status?: string; timing?: string }
-	| { kind: "steer"; text: string };
+export type DetailRequest = {
+	kind: "tool";
+	toolName: string;
+	target?: string;
+	args: unknown;
+	result: unknown;
+	status?: string;
+	timing?: string;
+};
 
 export const DETAIL_LIMITS = { characters: 128 * 1024, lines: 4000, lineCharacters: 8192, nodes: 6000, depth: 24 } as const;
 export const DETAIL_TRUNCATION = "[Truncated: viewer safety limit reached; remaining content omitted.]";
@@ -34,7 +39,6 @@ export interface DetailModel {
 	status?: string;
 	timing?: string;
 	failed: boolean;
-	showTabs: boolean;
 	tabs: DetailTab[];
 }
 
@@ -436,13 +440,6 @@ function chrome(value: string): string {
 }
 
 export function buildDetailModel(request: DetailRequest): DetailModel {
-	if (request.kind === "steer") {
-		const report = boundedText(request.text);
-		return {
-			title: "Steer", failed: false, showTabs: false,
-			tabs: [{ id: "result", label: "Result", ...report, rawText: report.text, presentation: "text" }],
-		};
-	}
 	const details = field(request.result, "details");
 	const hasDetails = nonempty(details);
 	const metadata = metadataReport(request.result, details, hasDetails);
@@ -468,6 +465,6 @@ export function buildDetailModel(request: DetailRequest): DetailModel {
 	return {
 		title: chrome(request.target ?? request.toolName), status: status ?? (failed ? "failed" : undefined),
 		timing: request.timing === undefined ? undefined : chrome(request.timing),
-		failed, showTabs: true, tabs,
+		failed, tabs,
 	};
 }

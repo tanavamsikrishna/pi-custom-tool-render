@@ -185,8 +185,8 @@ export class DetailViewer implements Component {
 	handleInput(data: string): void {
 		if (this.closed) return;
 		if (matchesKey(data, "escape")) { this.closed = true; this.options.onClose(); }
-		else if (matchesKey(data, "tab") && this.model.showTabs) this.cyclePrimary(1);
-		else if (matchesKey(data, "shift+tab") && this.model.showTabs) this.cyclePrimary(-1);
+		else if (matchesKey(data, "tab")) this.cyclePrimary(1);
+		else if (matchesKey(data, "shift+tab")) this.cyclePrimary(-1);
 		else if (data === "m" || data === "M") this.toggleMetadata();
 		else if (data === "r" || data === "R") this.toggleRaw();
 		else if (matchesKey(data, "up")) this.scroll(-1);
@@ -268,7 +268,7 @@ export class DetailViewer implements Component {
 		const padding = border && inner >= 8 ? 1 : 0;
 		const contentWidth = inner - padding * 2;
 		const title = height >= 3;
-		const tabs = this.model.showTabs && height >= 5;
+		const tabs = height >= 5;
 		const footer = height >= 2;
 		this.viewportWidth = contentWidth;
 		this.viewportHeight = Math.max(1, height - Number(title) - Number(tabs) - Number(footer) - (border ? 2 : 0));
@@ -284,7 +284,7 @@ export class DetailViewer implements Component {
 			const glyph = this.model.failed ? "! Failed" : this.model.status === "success" ? "●" : this.model.status ? "●" : "";
 			const timing = this.model.timing?.trim().split(/\s+/)[0] ?? "";
 			const status = [this.fg(this.model.failed ? "error" : this.model.status === "success" ? "success" : "muted", glyph), this.fg("dim", timing)].filter((part) => visibleWidth(part) > 0).join(" ");
-			const label = this.model.title + (!tabs && this.model.showTabs ? ` · ${this.tab().label}${this.isRaw() ? " / Raw" : ""}` : "");
+			const label = this.model.title + (!tabs ? ` · ${this.tab().label}${this.isRaw() ? " / Raw" : ""}` : "");
 			output.push(row(composeDetailLine(this.fg("text", this.options.theme?.bold(label) ?? label), status, contentWidth)));
 		}
 		if (tabs) {
@@ -295,8 +295,8 @@ export class DetailViewer implements Component {
 		if (footer) {
 			const position = page.lines.length ? `${page.top + 1}–${Math.min(page.top + this.viewportHeight, page.lines.length)}/${page.lines.length}` : "0/0";
 			const controls = contentWidth >= 64
-				? `↑↓ Scroll${this.model.showTabs ? " · Tab Switch" : ""}${this.canToggleRaw() ? " · R Raw" : ""} · Esc Close`
-				: contentWidth >= 32 ? `Esc${this.model.showTabs ? " · Tab" : ""}${this.canToggleRaw() ? " · R Raw" : ""} · ↑↓` : "Esc";
+				? `↑↓ Scroll · Tab Switch${this.canToggleRaw() ? " · R Raw" : ""} · Esc Close`
+				: contentWidth >= 32 ? `Esc · Tab${this.canToggleRaw() ? " · R Raw" : ""} · ↑↓` : "Esc";
 			output.push(row(composeDetailLine(this.fg("dim", controls), this.fg("dim", position), contentWidth)));
 		}
 		if (border) output.push(this.fg("border", `└${"─".repeat(inner)}┘`));

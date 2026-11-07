@@ -399,21 +399,6 @@ test("titles contain only the safe bounded target, with separate status and timi
 	assert.ok(buildDetailModel({ ...tool({}), target: "x".repeat(DETAIL_LIMITS.characters * 2) }).title.length <= 160);
 });
 
-test("Steer has only a literal Result and sanitized original Raw, without status or tabs", () => {
-	const text = '{"original":true}\nBearer synthetic-visible-value\x1b]52;c;hidden\x07';
-	const model = buildDetailModel({ kind: "steer", text });
-	assert.equal(model.title, "Steer");
-	assert.equal(model.showTabs, false);
-	assert.equal(model.failed, false);
-	assert.equal(model.status, undefined);
-	assert.equal(model.tabs.length, 1);
-	assert.equal(model.tabs[0].id, "result");
-	assert.equal(model.tabs[0].presentation, "text");
-	assert.equal(model.tabs[0].text, sanitizeDetailText(text));
-	assert.equal(model.tabs[0].rawText, sanitizeDetailText(text));
-	assert.equal(model.tabs[0].masked, false);
-});
-
 test("structured snapshots omit cycles, accessors and methods without evaluating them", () => {
 	let calls = 0;
 	const forbidden = () => { calls++; throw new Error("must not execute"); };

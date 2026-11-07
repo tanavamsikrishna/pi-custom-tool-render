@@ -1,6 +1,5 @@
 /**
  * Accent-gutter user message box for individual mode.
- * Aggregate steer presentation and ledger mouse patches are not installed.
  */
 import {
   type ExtensionAPI,
@@ -12,7 +11,6 @@ import {
   type UserMessageTheme,
 } from "./user-message-box-renderer.js";
 import { unregisterUserMessageRenderPrototypePatch } from "./user-message-box-patch.js";
-import type { ToolDisplayConfig } from "./types.js";
 import { onReloadShutdown } from "./extension-lifecycle.js";
 
 const registeredNativeUserMessageApis = new WeakSet<ExtensionAPI>();
@@ -24,14 +22,11 @@ function getUserMessagePrototype(): PatchableUserMessagePrototype {
 function patchUserMessageRender(
   getTheme: () => UserMessageTheme | undefined,
   isEnabled: () => boolean,
-  isCompact: () => boolean,
 ): void {
   patchNativeUserMessagePrototype(
     getUserMessagePrototype(),
     getTheme,
     isEnabled,
-    isCompact,
-    () => undefined,
   );
 }
 
@@ -41,7 +36,6 @@ function restoreUserMessageRender(): void {
 
 export default function registerNativeUserMessageBox(
   pi: ExtensionAPI,
-  _getConfig: () => ToolDisplayConfig,
 ): void {
   if (registeredNativeUserMessageApis.has(pi)) {
     return;
@@ -52,9 +46,8 @@ export default function registerNativeUserMessageBox(
 
   const getTheme = (): UserMessageTheme | undefined => activeTheme;
   const isEnabled = (): boolean => true;
-  const isCompact = (): boolean => false;
 
-  patchUserMessageRender(getTheme, isEnabled, isCompact);
+  patchUserMessageRender(getTheme, isEnabled);
 
   onReloadShutdown(pi, () => {
     restoreUserMessageRender();
@@ -63,11 +56,11 @@ export default function registerNativeUserMessageBox(
   });
 
   pi.on("before_agent_start", async () => {
-    patchUserMessageRender(getTheme, isEnabled, isCompact);
+    patchUserMessageRender(getTheme, isEnabled);
   });
 
   pi.on("session_start", async (_event, ctx) => {
     activeTheme = ctx?.ui?.theme as unknown as UserMessageTheme;
-    patchUserMessageRender(getTheme, isEnabled, isCompact);
+    patchUserMessageRender(getTheme, isEnabled);
   });
 }

@@ -68,7 +68,7 @@ export default function toolDisplayExtension(pi: ExtensionAPI): void {
   };
 
   registerToolRenderers(pi, getEffectiveConfig);
-  registerNativeUserMessageBox(pi, () => loaded.config);
+  registerNativeUserMessageBox(pi);
 
   const bindOverlay = (ctx: ExtensionContext): void => {
     bindDetailOpener(ctx, getEffectiveConfig);
