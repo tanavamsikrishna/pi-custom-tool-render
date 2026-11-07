@@ -17,7 +17,7 @@ import {
 import { extractTextOutput } from "./render-utils.js";
 import {
   applyToolResultStyle,
-  formatClaudeToolCall,
+  formatToolCall,
 } from "./tool-call-style.js";
 import { toRecord } from "./tool-metadata.js";
 import type { ToolDisplayConfig } from "./types.js";
@@ -117,7 +117,7 @@ export function resolveToolRenderers(
   return wrapDetailRenderers(toolName, {
     renderShell: "self",
     renderCall(args, theme, context) {
-      const line = formatClaudeToolCall(
+      const line = formatToolCall(
         toolName,
         theme.fg("muted", formatFlatArgumentPreview(args)),
         "",

@@ -1,3 +1,7 @@
+/**
+ * Tool call line and result gutter.
+ * Status is a colored dot. Results sit under a box-drawing prefix.
+ */
 import type { Component } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -12,29 +16,27 @@ export interface ToolCallStatusContext {
   isPartial?: boolean;
 }
 
-export function formatClaudeStatusMarker(
+export function formatStatusMarker(
   theme: ToolCallStyleTheme,
   context?: ToolCallStatusContext,
-  runningFrame?: string,
 ): string {
   if (context?.isError) {
     return theme.fg("error", "●");
   }
   if (context?.isPartial) {
-    return theme.fg("warning", runningFrame || "●");
+    return theme.fg("warning", "●");
   }
   return theme.fg("success", "●");
 }
 
-export function formatClaudeToolCall(
+export function formatToolCall(
   toolName: string,
   target: string,
   metadataSuffix: string,
   theme: ToolCallStyleTheme,
   context?: ToolCallStatusContext,
-  runningFrame?: string,
 ): string {
-  const marker = formatClaudeStatusMarker(theme, context, runningFrame);
+  const marker = formatStatusMarker(theme, context);
   const label = toolName;
   return `${marker} ${theme.fg("toolTitle", theme.bold(label))} (${target})${metadataSuffix}`;
 }
@@ -58,15 +60,15 @@ function stripLegacyResultMarker(line: string): string {
     : `${line.slice(0, index)}${line.slice(index + marker.length)}`;
 }
 
-export interface ClaudeToolResultStyleOptions {
+export interface ToolResultStyleOptions {
   connectRows?: boolean;
   theme?: Pick<ToolCallStyleTheme, "fg">;
 }
 
-export class ClaudeToolResultComponent implements Component {
+export class ToolResultComponent implements Component {
   constructor(
     private readonly child: Component,
-    private readonly options: ClaudeToolResultStyleOptions = {},
+    private readonly options: ToolResultStyleOptions = {},
   ) {}
 
   render(width: number): string[] {
@@ -116,13 +118,13 @@ export class ClaudeToolResultComponent implements Component {
 
 export function applyToolResultStyle(
   component: unknown,
-  options: ClaudeToolResultStyleOptions = {},
+  options: ToolResultStyleOptions = {},
 ): unknown {
   if (
-    component instanceof ClaudeToolResultComponent ||
+    component instanceof ToolResultComponent ||
     !isComponent(component)
   ) {
     return component;
   }
-  return new ClaudeToolResultComponent(component, options);
+  return new ToolResultComponent(component, options);
 }
