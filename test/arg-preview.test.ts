@@ -7,6 +7,7 @@ import test from "node:test";
 import { sanitizePreviewArgs } from "../src/arg-sanitize.ts";
 import {
   ARGUMENT_PATH_MAX_LENGTH,
+  CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH,
   formatPreviewPath,
 } from "../src/arg-preview.ts";
 import {
@@ -130,6 +131,44 @@ test("known tools render one sanitized string and never show timeouts", () => {
   assert.equal(preview("ls", {}), ".");
   assert.equal(preview("ls", { path: "/proj/src" }), "./src");
   assert.equal(preview("custom", { files: ["a", "b"], timeout: 9 }), "files=a.b");
+});
+
+test("web_search shows only the sanitized query value", () => {
+  assert.equal(
+    preview("web_search", {
+      query: "how does pi render tools",
+      urls: ["https://example.com/a?token=1"],
+    }),
+    "how does pi render tools",
+  );
+  assert.equal(preview("web_search", { query: "docs" }), "docs");
+  assert.equal(preview("web_search", { query: "hi\nthere" }), "hi there");
+  assert.equal(
+    preview("web_search", { query: "sk-abcdefghijklmnopqrstuvwxyz" }),
+    "\u2022\u2022\u2022",
+  );
+
+  const query = "q".repeat(CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH + 12);
+  const formatted = preview("web_search", { query });
+  assert.equal(
+    formatted,
+    `${"q".repeat(CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH - 1)}\u2026`,
+  );
+  assert.ok(Array.from(formatted).length <= CUSTOM_ARGUMENT_PREVIEW_MAX_LENGTH);
+
+  assert.equal(
+    preview("web_search", { urls: ["https://example.com/a?token=1"] }),
+    "urls=example.com/a",
+  );
+  assert.equal(
+    preview("web_search", { query: "   ", urls: ["https://example.com/a"] }),
+    "query=\"\" \u00b7 urls=example.com/a",
+  );
+  assert.equal(
+    preview("web_search", { query: 1, urls: ["https://example.com"] }),
+    "query=1 \u00b7 urls=example.com",
+  );
+  assert.equal(preview("mcp__x__web_search", { query: "docs" }), "query=docs");
 });
 
 test("a registered preview replaces the builtin and can be removed", () => {

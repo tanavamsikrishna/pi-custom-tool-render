@@ -91,6 +91,13 @@ test("built-in call lines use the tool preview", () => {
     ),
     false,
   );
+  const search = callLine(
+    "web_search",
+    { query: "how does pi render tools", urls: ["https://example.com"] },
+    { cwd },
+  );
+  assert.match(search, /web_search \(how does pi render tools\)/);
+  assert.equal(search.includes("query="), false);
 });
 
 test("non-diff tools hide the result body", () => {

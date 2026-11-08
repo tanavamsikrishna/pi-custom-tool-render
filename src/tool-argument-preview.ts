@@ -122,6 +122,13 @@ const builtins: Record<string, ToolArgumentPreview> = {
       return truncatePreview(command, maxLength);
     },
   },
+  web_search: {
+    format(args, _context, maxLength) {
+      const query = textField(args, "query");
+      if (!query) return undefined;
+      return truncatePreview(query, maxLength);
+    },
+  },
   grep: { format: formatSearch },
   find: { format: formatSearch },
   ls: {
