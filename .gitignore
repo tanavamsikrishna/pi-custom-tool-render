@@ -10,3 +10,4 @@ dist/
 .DS_Store
 Session.vim
 .qmd/index.sqlite
+graphify-out/
