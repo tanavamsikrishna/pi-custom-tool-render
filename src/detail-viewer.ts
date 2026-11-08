@@ -26,6 +26,7 @@ import {
 } from "./detail-diff.js";
 import {
   colorDetailJson,
+  colorDetailYaml,
   createDetailMarkdown,
   layoutDetailFields,
   wrapDetailLine,
@@ -126,7 +127,9 @@ export class DetailViewer implements Component {
         ? tab.rawText
         : tab.presentation === "json"
           ? colorDetailJson(tab.text, this.options.theme)
-          : tab.text;
+          : tab.presentation === "yaml"
+            ? colorDetailYaml(tab.text, this.options.theme)
+            : tab.text;
       const fields =
         !raw && tab.presentation === "fields" ? tab.fields : undefined;
       const sourceLines =

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { parse } from "yaml";
 import {
   buildDetailModel,
   DETAIL_LIMITS,
   DETAIL_TRUNCATION,
   formatDetailJson,
   sanitizeDetailText,
-  type DetailField,
   type DetailRequest,
 } from "../src/detail-viewer-model.ts";
 
@@ -246,7 +246,7 @@ test("Write strips terminal controls from content and path without evaluating ac
   assert.equal(calls, 0);
 });
 
-test("Args exposes typed scalars, decoded multiline strings and structured nested values", () => {
+test("Args exposes one YAML document for scalars, multiline strings, and nested values", () => {
   const input = {
     command: "first\n  second\nthird",
     count: 3,
@@ -256,27 +256,20 @@ test("Args exposes typed scalars, decoded multiline strings and structured neste
     list: [1, false],
   };
   const page = argsPage(input);
-  assert.equal(page.presentation, "fields");
-  const expected: DetailField[] = [
-    { key: "command", value: input.command, kind: "string" },
-    { key: "count", value: "3", kind: "number" },
-    { key: "enabled", value: "true", kind: "boolean" },
-    { key: "absent", value: "null", kind: "null" },
-    {
-      key: "nested",
-      value: JSON.stringify(input.nested, null, 2),
-      kind: "json",
-    },
-    { key: "list", value: JSON.stringify(input.list, null, 2), kind: "json" },
-  ];
-  assert.deepEqual(page.fields, expected);
+  assert.equal(page.presentation, "yaml");
+  assert.equal(page.fields, undefined);
+  assert.deepEqual(parse(page.text), input);
   assert.equal(page.rawText, JSON.stringify(input, null, 2));
-  assert.equal(page.text, page.rawText);
+  assert.notEqual(page.text, page.rawText);
+  assert.match(page.text, /^command: \|/);
+  assert.match(page.text, /second/);
+  assert.match(page.text, /names:\n\s+- one/);
+  assert.doesNotMatch(page.text, /"names"/);
   assert.equal(page.masked, false);
   assert.equal(page.truncated, false);
 });
 
-test("only a string Bash command carries a language hint from the same sanitized Args snapshot", () => {
+test("Args YAML keeps a sanitized command and does not assign a shell language", () => {
   const command =
     "TOKEN=synthetic-visible\x1b]52;c;hidden\x07 printf '%s' \"$(whoami)\"\n# shell source";
   const page = argsPage(
@@ -288,50 +281,43 @@ test("only a string Bash command carries a language hint from the same sanitized
     "bash",
   );
   const snapshot = JSON.parse(page.rawText);
-  assert.deepEqual(page.fields?.[0], {
-    key: "command",
-    kind: "string",
-    value: snapshot.command,
-    language: "bash",
-  });
+  assert.equal(page.presentation, "yaml");
+  assert.equal(page.fields, undefined);
   assert.equal(snapshot.command, sanitizeDetailText(command, false));
-  assert.ok(
-    page.fields?.slice(1).every((field) => field.language === undefined),
-  );
+  assert.equal(parse(page.text).command, snapshot.command);
+  assert.match(page.text, /TOKEN=synthetic-visible/);
+  assert.doesNotMatch(page.text, /\\n# shell source/);
   assert.equal(page.masked, false);
-  for (const toolName of ["custom_tool", "read", "write"]) {
-    assert.ok(
-      argsPage({ command }, toolName).fields?.every(
-        (field) => field.language === undefined,
-      ),
-    );
+  for (const toolName of ["custom_tool", "read", "write", "bash"]) {
+    const other = argsPage({ command }, toolName);
+    assert.equal(other.presentation, "yaml");
+    assert.equal(other.fields, undefined);
   }
   for (const command of [null, false, 123, { value: "echo test" }, ["echo"]]) {
-    assert.equal(argsPage({ command }, "bash").fields?.[0].language, undefined);
+    const other = argsPage({ command }, "bash");
+    assert.equal(other.fields, undefined);
+    assert.deepEqual(parse(other.text), { command });
   }
 });
 
-test("a large multiline Bash command remains typed source instead of a clipped JSON string", () => {
+test("a large multiline Bash command is a YAML block instead of a clipped JSON string", () => {
   const command = Array.from(
     { length: 400 },
     (_, index) => `echo "line ${index}" # shell command`,
   ).join("\n");
   assert.ok(command.length > DETAIL_LIMITS.lineCharacters);
   const page = argsPage({ command, timeout: 60 }, "bash");
-  assert.equal(page.presentation, "fields");
-  assert.equal(
-    page.fields?.find((field) => field.key === "command")?.value,
-    command,
-  );
-  assert.equal(
-    page.fields?.find((field) => field.key === "command")?.language,
-    "bash",
-  );
+  assert.equal(page.presentation, "yaml");
+  assert.equal(page.fields, undefined);
+  assert.match(page.text, /echo "line 0" # shell command/);
+  assert.match(page.text, /echo "line 399" # shell command/);
+  assert.doesNotMatch(page.text, /\\n/);
+  assert.equal(parse(page.text).command, command);
   assert.equal(JSON.parse(page.rawText).command, command);
   assert.equal(page.truncated, false);
 });
 
-test("credentials and token-like strings survive typed fields and Raw without mutating Args", () => {
+test("credentials and token-like strings survive YAML Args and Raw without mutating Args", () => {
   const input = {
     api_key: "synthetic-key-value",
     nested: { PASSWORD: "synthetic-password-value", normal: 2 },
@@ -350,16 +336,49 @@ test("credentials and token-like strings survive typed fields and Raw without mu
   const page = argsPage(input);
   assert.equal(page.masked, false);
   assert.equal(page.truncated, false);
-  assert.equal(page.presentation, "fields");
+  assert.equal(page.presentation, "yaml");
+  assert.equal(page.fields, undefined);
+  assert.deepEqual(parse(page.text), input);
   assert.deepEqual(JSON.parse(page.rawText), input);
-  assert.equal(page.text, page.rawText);
-  for (const item of page.fields!) {
-    assert.deepEqual(
-      item.kind === "json" ? JSON.parse(item.value) : item.value,
-      input[item.key as keyof typeof input],
-    );
-  }
+  assert.notEqual(page.text, page.rawText);
+  assert.match(page.text, /BEGIN PRIVATE KEY/);
+  assert.doesNotMatch(page.text, /"PASSWORD"/);
   assert.equal(JSON.stringify(input), before);
+});
+
+test("Args YAML round-trips ambiguous scalars, shared objects, and empty collections", () => {
+  const shared = { x: 1 };
+  const input = {
+    yes: "yes",
+    on: "on",
+    truth: "true",
+    nothing: "null",
+    number: "1",
+    tilde: "~",
+    empty: "",
+    star: "*alias",
+    circ: "[Circular]",
+    colon: "a: b",
+    hash: "foo # bar",
+    amp: "&anchor",
+    blankLines: "hello\n\n",
+    sharedA: shared,
+    sharedB: shared,
+    equalA: { x: 1 },
+    equalB: { x: 1 },
+    emptyObject: {},
+    emptyList: [],
+    "a:b": 1,
+  };
+  const page = argsPage(input);
+  assert.equal(page.presentation, "yaml");
+  assert.equal(page.fields, undefined);
+  assert.doesNotMatch(page.text, /(^|\n)---|&a\d|\*a\d/);
+  assert.deepEqual(parse(page.text), JSON.parse(page.rawText));
+  assert.deepEqual(parse(page.text), input);
+  assert.match(page.text, /\{\}/);
+  assert.match(page.text, /\[\]/);
+  assert.match(page.text, /hello/);
 });
 
 test("masked stays false and literal safety markers do not imply truncation", () => {
@@ -376,7 +395,7 @@ test("masked stays false and literal safety markers do not imply truncation", ()
   }
 });
 
-test("truncated Args never becomes a partial field list, and non-object Args stays JSON", () => {
+test("truncated Args stays JSON, and complete non-object Args becomes YAML", () => {
   let deep: unknown = { kept: true };
   for (let i = 0; i < DETAIL_LIMITS.depth + 2; i++) deep = { nested: deep };
   for (const input of [
@@ -386,15 +405,17 @@ test("truncated Args never becomes a partial field list, and non-object Args sta
   ]) {
     const page = argsPage(input);
     assert.equal(page.truncated, true);
-    assert.notEqual(page.presentation, "fields");
-    assert.equal(page.fields, undefined);
-    assert.ok(page.rawText.includes(DETAIL_TRUNCATION));
-  }
-  for (const input of [[1, 2], "plain scalar", 3, false, null]) {
-    const page = argsPage(input);
     assert.equal(page.presentation, "json");
     assert.equal(page.fields, undefined);
+    assert.equal(page.text, page.rawText);
+    assert.ok(page.rawText.includes(DETAIL_TRUNCATION));
+  }
+  for (const input of [[1, 2], "plain scalar", 3, false, null, {}, []]) {
+    const page = argsPage(input);
+    assert.equal(page.presentation, "yaml");
+    assert.equal(page.fields, undefined);
     assert.equal(page.truncated, false);
+    assert.deepEqual(parse(page.text), input);
     assert.deepEqual(JSON.parse(page.rawText), input);
   }
 });
@@ -690,17 +711,18 @@ test("structured snapshots omit cycles, accessors and methods without evaluating
   Object.defineProperty(input, "token", { enumerable: true, get: forbidden });
   input.self = input;
   const page = argsPage(input);
-  assert.equal(page.presentation, "fields");
+  assert.equal(page.presentation, "yaml");
+  assert.equal(page.fields, undefined);
   const parsed = JSON.parse(page.rawText);
   assert.equal(parsed.retained, 1);
   assert.equal(parsed.self, "[Circular]");
   assert.equal(parsed.getter, "[Accessor omitted]");
   assert.equal(parsed.token, "[Accessor omitted]");
   assert.equal(parsed.toJSON, "[function]");
-  assert.deepEqual(
-    page.fields?.find((item) => item.key === "getter"),
-    { key: "getter", kind: "string", value: "[Accessor omitted]" },
-  );
+  assert.deepEqual(parse(page.text), parsed);
+  assert.match(page.text, /\[Accessor omitted\]/);
+  assert.match(page.text, /\[Circular\]/);
+  assert.match(page.text, /\[function\]/);
   const type = { toString: forbidden, toJSON: forbidden };
   buildDetailModel(
     tool({ content: [{ type, value: 42 }], details: input }, input),
@@ -722,7 +744,10 @@ test("terminal controls stay inert in normal and Raw views, including decoded Ar
   assert.equal(result.rawText, "\x1b[31mred\x1b[0mlinkvisible\nnext");
   assert.equal(result.text, result.rawText);
   const page = argsPage({ value: text });
-  assert.equal(page.fields?.[0].value, "redlinkvisible\nnext");
+  assert.equal(page.presentation, "yaml");
+  assert.equal(parse(page.text).value, "redlinkvisible\nnext");
+  assert.match(page.text, /redlinkvisible/);
+  assert.doesNotMatch(page.text, /clipboard|unterminated|\x1b|\u202e/);
   assert.doesNotMatch(page.rawText, /clipboard|unterminated|https|\x1b|\u202e/);
 });
 

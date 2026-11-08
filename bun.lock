@@ -4,6 +4,10 @@
   "workspaces": {
     "": {
       "name": "pi-custom-tool-render",
+      "dependencies": {
+        "highlight.js": "10.7.3",
+        "yaml": "^2.9.0",
+      },
       "devDependencies": {
         "eslint": "^10.14.0",
         "typescript": "^6.0.3",

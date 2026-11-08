@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { visibleWidth, type TuiMouseEvent } from "@earendil-works/pi-tui";
+import { parse } from "yaml";
 import { DetailViewer } from "../src/detail-viewer.ts";
 import {
   buildDetailModel,
@@ -182,11 +183,15 @@ test("Args and Metadata preserve credentials and token-like values without mutat
     assert.deepEqual(JSON.parse(tab.rawText), args);
     assert.match(tab.text, /synthetic-api-secret/);
     assert.match(tab.text, /Readable explanation Readable explanation/);
-    assert.match(tab.text, /"enabled": true/);
+    if (tab.id === "args") {
+      assert.equal(tab.presentation, "yaml");
+      assert.match(tab.text, /enabled: true/);
+      assert.doesNotMatch(tab.text, /"enabled": true/);
+    } else assert.match(tab.text, /"enabled": true/);
   }
   assert.equal(JSON.stringify(args), before);
   assert.equal(
-    JSON.parse(model.tabs[1].text).nested[0].PASSWORD,
+    parse(model.tabs[1].text).nested[0].PASSWORD,
     "synthetic-password",
   );
 });

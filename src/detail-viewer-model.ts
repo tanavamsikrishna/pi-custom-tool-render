@@ -1,7 +1,10 @@
 /**
  * Read-only Args / Result / metadata snapshot for the tool-call detail overlay.
- * Sanitizes and truncates tool args and results. Does not draw or open a UI.
+ * Sanitizes and truncates tool args and results. A complete Args view is one
+ * YAML document of that snapshot; rawText stays JSON. Does not draw or open a UI.
  */
+import { parse, stringify } from "yaml";
+
 export type DetailRequest = {
   kind: "tool";
   toolName: string;
@@ -35,7 +38,7 @@ export interface DetailTab {
   advanced?: boolean;
   text: string;
   rawText: string;
-  presentation: "text" | "json" | "markdown" | "fields";
+  presentation: "text" | "json" | "markdown" | "fields" | "yaml";
   masked: boolean;
   truncated: boolean;
   diff?: { filePath?: string; source?: "edit" | "write" };
@@ -742,9 +745,53 @@ function resultTab(
   return tab;
 }
 
-function argsTab(args: unknown, toolName: string): DetailTab {
-  // JSON encodes a multiline command into one long string line. Bound the
-  // whole snapshot, not that encoding artifact, before decoding typed fields.
+const ARGS_YAML = {
+  schema: "core",
+  version: "1.2",
+  aliasDuplicateObjects: false,
+  directives: false,
+  lineWidth: 0,
+  minContentWidth: 0,
+  blockQuote: "literal",
+  trueStr: "true",
+  falseStr: "false",
+  nullStr: "null",
+  doubleQuotedAsJSON: true,
+} as const;
+
+/** YAML for one already-parsed snapshot. Undefined means the caller must keep JSON. */
+function encodeArgsYaml(value: unknown): string | undefined {
+  try {
+    const encoded = stringify(value, ARGS_YAML);
+    if (
+      typeof encoded !== "string" ||
+      encoded.length === 0 ||
+      encoded.startsWith("---") ||
+      encoded.startsWith("%")
+    )
+      return undefined;
+    const stripped = encoded.endsWith("\n") ? encoded.slice(0, -1) : encoded;
+    if (stripped === encoded) return encoded;
+    try {
+      // Keep a trailing newline when it is block content, not a document terminator.
+      if (
+        JSON.stringify(parse(stripped, { schema: "core", version: "1.2" })) ===
+        JSON.stringify(value)
+      )
+        return stripped;
+    } catch {
+      /* The terminator is content. */
+    }
+    return encoded;
+  } catch {
+    return undefined;
+  }
+}
+
+function argsTab(args: unknown): DetailTab {
+  // JSON encodes a multiline command into one long string line. Keep the
+  // relaxed line cap so that artifact can still be parsed and re-emitted
+  // as one YAML document. Never walk tool-owned args a second time.
   const encoded = formatJsonReport(args);
   const bounded = boundedText(
     encoded.text,
@@ -757,7 +804,6 @@ function argsTab(args: unknown, toolName: string): DetailTab {
     ...bounded,
     truncated: encoded.truncated || bounded.truncated,
   };
-  // All field values come from this safe snapshot, never a second walk of tool-owned args.
   const tab: DetailTab = {
     id: "args",
     label: "Args",
@@ -767,33 +813,9 @@ function argsTab(args: unknown, toolName: string): DetailTab {
   };
   if (report.truncated) return tab;
   try {
-    const parsed: unknown = JSON.parse(report.text);
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed) ||
-      Object.getPrototypeOf(parsed) !== Object.prototype
-    )
-      return tab;
-    const fields: DetailField[] = Object.entries(parsed).map(([key, value]) => {
-      const kind: DetailField["kind"] =
-        value === null
-          ? "null"
-          : typeof value === "object"
-            ? "json"
-            : (typeof value as "string" | "number" | "boolean");
-      return {
-        key,
-        kind,
-        value: kind === "json" ? JSON.stringify(value, null, 2) : String(value),
-        ...(toolName === "bash" && key === "command" && kind === "string"
-          ? { language: "bash" }
-          : {}),
-      };
-    });
-    if (fields.some((item) => boundedText(item.value, false).truncated))
-      return tab;
-    return { ...tab, presentation: "fields", fields };
+    const yaml = encodeArgsYaml(JSON.parse(report.text));
+    if (yaml === undefined || boundedText(yaml, false).truncated) return tab;
+    return { ...tab, text: yaml, presentation: "yaml", masked: false };
   } catch {
     return tab;
   }
@@ -855,7 +877,7 @@ export function buildDetailModel(request: DetailRequest): DetailModel {
       truncated: diff.display.truncated || raw.truncated,
     };
   }
-  const tabs = [primary, argsTab(request.args, request.toolName)];
+  const tabs = [primary, argsTab(request.args)];
   if (metadata)
     tabs.push({
       id: "details",
