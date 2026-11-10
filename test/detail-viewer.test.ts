@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { visibleWidth, type TuiMouseEvent } from "@earendil-works/pi-tui";
 import { parse } from "yaml";
-import { DetailViewer } from "../src/detail-viewer.ts";
+import { DetailViewer, openDetailViewer } from "../src/detail-viewer.ts";
 import {
   buildDetailModel,
   DETAIL_LIMITS,
@@ -546,12 +546,54 @@ test("multiline SGR is carried into scrolled lines and reset before viewer chrom
   assert.doesNotMatch(lines[1], /\x1b\[31m/);
 });
 
-test("input does not edit the snapshot, and Esc closes exactly once", () => {
+test("input does not edit the snapshot; Q and Ctrl-C close once, Esc does not", () => {
   const { component, closes } = viewer(native("original text"));
   const before = plain(component.render(100));
   component.handleInput("replacement text");
   assert.equal(plain(component.render(100)), before);
   component.handleInput("\x1b");
   component.handleInput("\x1b");
-  assert.equal(closes(), 1);
+  assert.equal(closes(), 0);
+  assert.match(plain(component.render(80)), /Q\/Ctrl-C Close/);
+  assert.match(plain(component.render(40)), /Q\/Ctrl-C/);
+  assert.match(plain(component.render(20)), /\bQ\b/);
+  assert.doesNotMatch(plain(component.render(80)), /Esc/);
+  for (const key of ["q", "Q", "\x03"]) {
+    const opened = viewer(native("original text"));
+    opened.component.handleInput(key);
+    opened.component.handleInput(key);
+    assert.equal(opened.closes(), 1, key);
+  }
+});
+
+test("open detail viewer consumes Esc before focus routing and releases the listener", async () => {
+  let handler:
+    | ((data: string) => { consume?: boolean } | undefined)
+    | undefined;
+  let finish = () => {};
+  const ctx = {
+    hasUI: true,
+    mode: "tui",
+    ui: {
+      onTerminalInput(
+        next: (data: string) => { consume?: boolean } | undefined,
+      ) {
+        handler = next;
+        return () => {
+          handler = undefined;
+        };
+      },
+      custom: () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    },
+  };
+  const pending = openDetailViewer(ctx as never, native("original text"));
+  assert.equal(handler?.("\x1b")?.consume, true);
+  assert.equal(handler?.("q"), undefined);
+  assert.equal(handler?.("\x03"), undefined);
+  finish();
+  await pending;
+  assert.equal(handler, undefined);
 });

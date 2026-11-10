@@ -1,7 +1,8 @@
 /**
  * Centered TUI overlay for one tool call's args and result.
  * openDetailViewer(ctx, request, config) no-ops outside TUI.
- * Esc closes; Tab switches tabs; arrows scroll. Not the aggregate ledger.
+ * Ctrl-C or Q closes; Esc is swallowed. Tab switches tabs; arrows scroll.
+ * Not the aggregate ledger.
  */
 import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -282,10 +283,18 @@ export class DetailViewer implements Component {
 
   handleInput(data: string): void {
     if (this.closed) return;
-    if (matchesKey(data, "escape")) {
+    if (
+      matchesKey(data, "ctrl+c") ||
+      matchesKey(data, "q") ||
+      matchesKey(data, "shift+q")
+    ) {
       this.closed = true;
       this.options.onClose();
-    } else if (matchesKey(data, "tab")) this.cyclePrimary(1);
+      return;
+    }
+    // app.interrupt is escape. Swallow it so it cannot reach the main pane.
+    if (matchesKey(data, "escape")) return;
+    if (matchesKey(data, "tab")) this.cyclePrimary(1);
     else if (matchesKey(data, "shift+tab")) this.cyclePrimary(-1);
     else if (data === "m" || data === "M") this.toggleMetadata();
     else if (data === "r" || data === "R") this.toggleRaw();
@@ -498,10 +507,10 @@ export class DetailViewer implements Component {
         : "0/0";
       const controls =
         contentWidth >= 64
-          ? `↑↓ Scroll · Tab Switch${this.canToggleRaw() ? " · R Raw" : ""} · Esc Close`
+          ? `↑↓ Scroll · Tab Switch${this.canToggleRaw() ? " · R Raw" : ""} · Q/Ctrl-C Close`
           : contentWidth >= 32
-            ? `Esc · Tab${this.canToggleRaw() ? " · R Raw" : ""} · ↑↓`
-            : "Esc";
+            ? `Q/Ctrl-C · Tab${this.canToggleRaw() ? " · R Raw" : ""} · ↑↓`
+            : "Q";
       output.push(
         row(
           composeDetailLine(
@@ -524,19 +533,30 @@ export async function openDetailViewer(
 ): Promise<void> {
   if (!ctx.hasUI || ctx.mode !== "tui") return;
   const model = buildDetailModel(request);
-  await ctx.ui.custom<void>(
-    (tui, theme, _keybindings, done) =>
-      new DetailViewer(model, {
-        getHeight: () =>
-          Math.max(1, Math.min(48, Math.floor(tui.terminal.rows * 0.9))),
-        theme,
-        diffConfig: config,
-        onClose: () => done(undefined),
-        onRender: () => tui.requestRender(),
-      }),
-    {
-      overlay: true,
-      overlayOptions: { anchor: "center", width: "95%", maxHeight: "100%" },
-    },
-  );
+  // Listeners run before focus routing. Consume Esc even if the overlay loses focus.
+  const stopSwallowingEscape =
+    typeof ctx.ui.onTerminalInput === "function"
+      ? ctx.ui.onTerminalInput((data) =>
+          matchesKey(data, "escape") ? { consume: true } : undefined,
+        )
+      : undefined;
+  try {
+    await ctx.ui.custom<void>(
+      (tui, theme, _keybindings, done) =>
+        new DetailViewer(model, {
+          getHeight: () =>
+            Math.max(1, Math.min(48, Math.floor(tui.terminal.rows * 0.9))),
+          theme,
+          diffConfig: config,
+          onClose: () => done(undefined),
+          onRender: () => tui.requestRender(),
+        }),
+      {
+        overlay: true,
+        overlayOptions: { anchor: "center", width: "95%", maxHeight: "100%" },
+      },
+    );
+  } finally {
+    stopSwallowingEscape?.();
+  }
 }
